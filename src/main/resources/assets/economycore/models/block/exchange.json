@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "top": "economycore:block/exchange_top",
+    "front": "economycore:block/exchange_front",
+    "side": "economycore:block/exchange_side"
+  }
+}

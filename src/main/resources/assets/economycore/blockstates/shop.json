@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "economycore:block/shop" },
+    "facing=east":  { "model": "economycore:block/shop", "y": 90 },
+    "facing=south": { "model": "economycore:block/shop", "y": 180 },
+    "facing=west":  { "model": "economycore:block/shop", "y": 270 }
+  }
+}
