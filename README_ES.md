@@ -122,6 +122,9 @@ dependencies {
 }
 ```
 
+Cambia `<fileId>` por el archivo de la versión que quieras: es el número al final de la
+página de ese archivo en CurseForge.
+
 ## Compilar
 
 ```

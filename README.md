@@ -117,6 +117,9 @@ dependencies {
 }
 ```
 
+Replace `<fileId>` with the file of the version you want: it is the number at the end of
+that file's page on CurseForge.
+
 ## Building
 
 ```
