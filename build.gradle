@@ -30,6 +30,13 @@ base {
     archivesName = mod_id
 }
 
+// The jar names the Minecraft version and the loader it is for, so a downloaded
+// file says what it fits. The Maven version stays the plain mod version: that is
+// what mods depending on this one ask for.
+tasks.withType(Jar).configureEach {
+    archiveVersion = "${minecraft_version}-${mod_version}-NeoForge"
+}
+
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
 neoForge {

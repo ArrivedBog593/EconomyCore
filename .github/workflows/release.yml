@@ -1,0 +1,102 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6.1.0
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      # Both pre-flight checks run BEFORE the build: a wrong version or a
+      # missing changelog should fail in twenty seconds, not in four minutes.
+
+      # The tag carries both numbers: v0.10.0+mc1.21.1. The mod version is what
+      # ends up inside the jar, and the Minecraft version is what tells the
+      # branches apart — tagging from the wrong branch is otherwise invisible
+      # until someone downloads it.
+      - name: Verify tag matches this branch
+        run: |
+          set -euo pipefail
+          REF="${GITHUB_REF_NAME#v}"
+
+          case "$REF" in
+            *+mc*) ;;
+            *) echo "::error::The tag must look like v<mod_version>+mc<minecraft_version>, e.g. v0.10.0+mc1.21.1."; exit 1 ;;
+          esac
+
+          TAG_MOD="${REF%%+*}"
+          TAG_MC="${REF#*+mc}"
+
+          MOD_VERSION=$(grep '^mod_version=' gradle.properties | cut -d'=' -f2 | tr -d '[:space:]')
+          MC_VERSION=$(grep '^minecraft_version=' gradle.properties | cut -d'=' -f2 | tr -d '[:space:]')
+
+          echo "tag: $TAG_MOD / mc $TAG_MC | gradle.properties: $MOD_VERSION / mc $MC_VERSION"
+
+          if [ "$TAG_MOD" != "$MOD_VERSION" ]; then
+            echo "::error::The tag says mod $TAG_MOD but gradle.properties says $MOD_VERSION."
+            exit 1
+          fi
+          if [ "$TAG_MC" != "$MC_VERSION" ]; then
+            echo "::error::The tag says Minecraft $TAG_MC but this branch builds for $MC_VERSION. Wrong branch?"
+            exit 1
+          fi
+
+          # A hyphen in the MOD version marks a prerelease. The '+mc' suffix
+          # must not be read as one.
+          case "$TAG_MOD" in
+            *-*) echo "PRERELEASE=true"  >> "$GITHUB_ENV" ;;
+            *)   echo "PRERELEASE=false" >> "$GITHUB_ENV" ;;
+          esac
+
+          echo "MOD_VERSION=$TAG_MOD" >> "$GITHUB_ENV"
+          echo "MC_VERSION=$TAG_MC"   >> "$GITHUB_ENV"
+
+      # One changelog file per version means the whole file IS the release body
+      # — nothing to slice out of a growing document.
+      - name: Locate this version's changelog
+        run: |
+          set -euo pipefail
+          NOTES="changelogs/changelog-${MOD_VERSION}.md"
+          if [ ! -s "$NOTES" ]; then
+            echo "::error::$NOTES is missing or empty. Write the changelog for this version before tagging it."
+            exit 1
+          fi
+          echo "NOTES_PATH=$NOTES" >> "$GITHUB_ENV"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Build
+        run: ./gradlew build
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          name: EconomyCore v${{ env.MOD_VERSION }} — Minecraft ${{ env.MC_VERSION }}
+          body_path: ${{ env.NOTES_PATH }}
+          prerelease: ${{ env.PRERELEASE }}
+          # Named rather than build/libs/*.jar: that glob would also pick up a
+          # sources or javadoc jar the day the build starts producing one.
+          files: build/libs/economycore-*-NeoForge.jar
+          # Without this, a build that produced no jar publishes an empty
+          # release instead of failing.
+          fail_on_unmatched_files: true
