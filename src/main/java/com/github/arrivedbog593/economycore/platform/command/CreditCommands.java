@@ -4,10 +4,8 @@ import com.github.arrivedbog593.economycore.api.CreditFormat;
 import com.github.arrivedbog593.economycore.api.TransactionType;
 import com.github.arrivedbog593.economycore.engine.CreditAccount;
 import com.github.arrivedbog593.economycore.platform.Commitments;
-import com.github.arrivedbog593.economycore.platform.CreditExchange;
 import com.github.arrivedbog593.economycore.platform.CreditStorage;
 import com.github.arrivedbog593.economycore.platform.EconomyEvents;
-import com.github.arrivedbog593.economycore.platform.ItemIds;
 import com.mojang.authlib.GameProfile;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.LongArgumentType;
@@ -17,28 +15,21 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.arguments.GameProfileArgument;
-import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
 
 import java.util.Collection;
-import java.util.Optional;
 
 /**
- * Player-facing credit commands, including the full round trip between items
- * and credits.
+ * {@code /credits}: a balance, a payment between players, and staff moving
+ * money that is not their own.
  * <p>
- * These exist so the economy can be exercised before any table block or GUI
- * is written. The exchange GUI will call the same {@link CreditExchange}
- * methods, so the behavior stays identical whichever way a player uses it.
- * <p>
- * Item ids use {@link ResourceLocationArgument} rather than a string
- * argument. Brigadier's unquoted strings do not allow a colon, so
- * {@code minecraft:diamond} fails to parse as a plain word; the resource
- * location argument understands the format natively and fills in
- * {@code minecraft:} when the namespace is left off.
+ * Items are not traded here. {@code /credits convert} and
+ * {@code /credits redeem} came first, to try the economy out before there
+ * was a block to stand at, and outlived that purpose once the exchange
+ * could be opened from anywhere with {@code /exchange}. Kept, they were a
+ * back door around a server that switches that command off to make players
+ * go to a counter.
  * <p>
  * All logging goes through {@link EconomyEvents#record}, never straight to
  * the log, so the saved sequence advances with every movement.
@@ -61,21 +52,6 @@ public final class CreditCommands {
                         .requires(StaffAccess::adminOrOperator)
                         .executes(context -> showBalanceOf(context.getSource(),
                                 GameProfileArgument.getGameProfiles(context, "player")))));
-
-        root.then(Commands.literal("convert")
-                .executes(context -> convertHeld(context.getSource())));
-
-        root.then(Commands.literal("redeem")
-                .then(Commands.argument("item", ResourceLocationArgument.id())
-                        .suggests(EconomySuggestions.PRICED_ITEMS)
-                        .executes(context -> redeemAll(
-                                context.getSource(),
-                                ResourceLocationArgument.getId(context, "item").toString()))
-                        .then(Commands.argument("count", LongArgumentType.longArg(1))
-                                .executes(context -> redeemExactly(
-                                        context.getSource(),
-                                        ResourceLocationArgument.getId(context, "item").toString(),
-                                        LongArgumentType.getLong(context, "count"))))));
 
         // Under the mod's own tree rather than a bare /pay. This runs on
         // Arclight beside Bukkit plugins, and Essentials has owned /pay on
@@ -297,86 +273,6 @@ public final class CreditCommands {
                         target.getDisplayName(), CreditFormat.of(amount)),
                 Component.translatable("economycore.command.credits.set_by", source.getDisplayName(),
                         target.getDisplayName(), CreditFormat.of(amount)));
-        return 1;
-    }
-
-    /** Items to credits. */
-    private static int convertHeld(CommandSourceStack source) throws CommandSyntaxException {
-        ServerPlayer player = source.getPlayerOrException();
-        ItemStack held = player.getMainHandItem();
-        CreditStorage storage = CreditStorage.get(source.getServer());
-
-        String itemId = held.isEmpty() ? "empty" : ItemIds.idOf(held);
-        CreditExchange.Result result = CreditExchange.deposit(
-                player, held, EconomyEvents.economy(), storage);
-
-        if (!result.success()) {
-            source.sendFailure(Component.translatable(result.failureKey()));
-            return 0;
-        }
-
-        long balance = storage.balanceOf(player.getUUID());
-        EconomyEvents.record(storage, TransactionType.CONVERT_IN, player.getUUID(),
-                result.credits(), balance, result.itemCount() + "x " + itemId);
-        source.sendSuccess(() -> Component.translatable(
-                "economycore.command.credits.converted",
-                result.itemCount(), result.credits()), false);
-        return 1;
-    }
-
-    /** Credits to items: as many as the balance covers. */
-    private static int redeemAll(CommandSourceStack source, String itemId)
-            throws CommandSyntaxException {
-        ServerPlayer player = source.getPlayerOrException();
-        Optional<Item> item = ItemIds.item(itemId);
-        if (item.isEmpty()) {
-            source.sendFailure(Component.translatable(
-                    "economycore.exchange.no_such_item", itemId));
-            return 0;
-        }
-        CreditStorage storage = CreditStorage.get(source.getServer());
-        return report(source, player, itemId, storage, CreditExchange.redeemAll(
-                player, item.get(), EconomyEvents.economy(), storage));
-    }
-
-    /**
-     * Credits to items: exactly this many, or nothing.
-     * <p>
-     * A short balance refuses the whole request and says how many would have
-     * worked, rather than quietly handing over fewer than asked for.
-     */
-    private static int redeemExactly(CommandSourceStack source, String itemId, long count)
-            throws CommandSyntaxException {
-        ServerPlayer player = source.getPlayerOrException();
-        Optional<Item> item = ItemIds.item(itemId);
-        if (item.isEmpty()) {
-            source.sendFailure(Component.translatable(
-                    "economycore.exchange.no_such_item", itemId));
-            return 0;
-        }
-        CreditStorage storage = CreditStorage.get(source.getServer());
-        return report(source, player, itemId, storage, CreditExchange.redeemExactly(
-                player, item.get(), count, EconomyEvents.economy(), storage));
-    }
-
-    /** Shared reporting and logging for both redeem forms. */
-    private static int report(CommandSourceStack source, ServerPlayer player, String itemId,
-                              CreditStorage storage, CreditExchange.Result result) {
-        if (!result.success()) {
-            source.sendFailure(Component.translatable(
-                    result.failureKey(),
-                    result.affordable(),
-                    ItemIds.displayName(itemId),
-                    result.required()));
-            return 0;
-        }
-
-        long balance = storage.balanceOf(player.getUUID());
-        EconomyEvents.record(storage, TransactionType.CONVERT_OUT, player.getUUID(),
-                -result.credits(), balance, result.itemCount() + "x " + itemId);
-        source.sendSuccess(() -> Component.translatable(
-                "economycore.command.credits.redeemed",
-                result.itemCount(), ItemIds.displayName(itemId), result.credits()), false);
         return 1;
     }
 }

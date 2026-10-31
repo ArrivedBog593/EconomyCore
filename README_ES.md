@@ -55,8 +55,6 @@ tienda, el recargo.
 | `/exchange`, `/shop` | todos, salvo que estén apagados | Abre la casa de cambio o la tienda |
 | `/credits` | todos | Tu saldo |
 | `/credits pay <jugador> <cantidad>` | todos | Envía créditos a otro jugador |
-| `/credits convert` | todos | Convierte en créditos el objeto que tienes en la mano |
-| `/credits redeem <objeto> [cantidad]` | todos | Cambia créditos por objetos |
 | `/credits balance <jugador>` | administradores del staff, operadores | El saldo de cualquiera, conectado o no |
 | `/credits give / take / set` | administradores del staff, operadores | Cambia un saldo |
 | `/economycore help` | todos | Todos los comandos que puedes usar, con una línea sobre cada uno |

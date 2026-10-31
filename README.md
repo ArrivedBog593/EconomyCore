@@ -50,8 +50,6 @@ A staff key opens the settings of any of them: prices, the shop's listings, the 
 | `/exchange`, `/shop`             | everyone, unless switched off   | Open the exchange or the shop                  |
 | `/credits`                       | everyone                        | Your balance                                   |
 | `/credits pay <player> <amount>` | everyone                        | Send credits to another player                 |
-| `/credits convert`               | everyone                        | Turn the item in your hand into credits        |
-| `/credits redeem <item> [count]` | everyone                        | Buy items back with credits                    |
 | `/credits balance <player>`      | staff administrators, operators | Anybody's balance, online or not               |
 | `/credits give / take / set`     | staff administrators, operators | Change a balance                               |
 | `/economycore help`              | everyone                        | Every command you can use, with a line on each |

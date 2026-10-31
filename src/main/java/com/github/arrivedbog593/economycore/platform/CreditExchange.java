@@ -39,28 +39,21 @@ public final class CreditExchange {
     }
 
     /**
-     * The outcome of an exchange.
+     * The outcome of a deposit.
      *
      * @param success    whether anything happened
      * @param itemCount  items moved
      * @param credits    credits moved, always positive
      * @param failureKey translation key when nothing happened, else null
-     * @param affordable how many items the player could actually have had
-     * @param required   credits the refused request would have needed
      */
-    public record Result(boolean success, long itemCount, long credits,
-                         String failureKey, long affordable, long required) {
+    public record Result(boolean success, long itemCount, long credits, String failureKey) {
 
         static Result failed(String failureKey) {
-            return new Result(false, 0, 0, failureKey, 0, 0);
-        }
-
-        static Result shortOf(String failureKey, long affordable, long required) {
-            return new Result(false, 0, 0, failureKey, affordable, required);
+            return new Result(false, 0, 0, failureKey);
         }
 
         static Result ok(long itemCount, long credits) {
-            return new Result(true, itemCount, credits, null, 0, 0);
+            return new Result(true, itemCount, credits, null);
         }
     }
 
@@ -172,7 +165,9 @@ public final class CreditExchange {
         }
 
         // Spendable, not balance: what is riding on a live round is already
-        // promised to it. See the note in redeemExactly.
+        // promised to it. A wager is not debited when it is placed, so the
+        // balance still counts credits a spin is waiting on, and buying items
+        // with them was a way of canceling a wager after betting had closed.
         long balance = storage.balanceOf(player.getUUID());
         long spendable = Commitments.players().spendable(player.getUUID(), balance);
         if (total > spendable) {
@@ -256,105 +251,6 @@ public final class CreditExchange {
         int count = stack.getCount();
         stack.setCount(0);
         return Result.ok(count, value);
-    }
-
-    /**
-     * Buys back as many of an item as the balance covers.
-     * <p>
-     * Leftover credits that do not cover one more item stay in the balance.
-     * If the inventory cannot take the lot, the request is cut down to what
-     * fits rather than refused: nothing was named, so nothing is being
-     * shortchanged.
-     */
-    public static Result redeemAll(ServerPlayer player, Item item,
-                                   EconomyManager economy, CreditStorage storage) {
-        long unitPrice = buybackUnitOf(item, economy);
-        if (unitPrice <= 0) {
-            return Result.failed("economycore.exchange.not_convertible");
-        }
-
-        // Spendable, not balance: what is riding on a live round is already
-        // promised to it. See the note in redeemExactly.
-        long balance = storage.balanceOf(player.getUUID());
-        long spendable = Commitments.players().spendable(player.getUUID(), balance);
-        long affordable = spendable / unitPrice;
-        if (affordable <= 0) {
-            return Result.shortOf(unitPrice <= balance
-                            ? "economycore.exchange.credits_promised"
-                            : "economycore.exchange.cannot_afford_one",
-                    0, unitPrice);
-        }
-
-        long count = Math.min(affordable, Inventories.spaceFor(player, item));
-        if (count <= 0) {
-            return Result.failed("economycore.exchange.no_room");
-        }
-        return commit(player, item, count, count * unitPrice,
-                economy.table().surchargeOn(ItemIds.idOf(item), count), storage);
-    }
-
-    /**
-     * Buys back an exact number of items.
-     * <p>
-     * Refuses outright if the balance or the inventory falls short, reporting
-     * how many would have worked so the player knows what to ask for next.
-     */
-    public static Result redeemExactly(ServerPlayer player, Item item, long requested,
-                                       EconomyManager economy, CreditStorage storage) {
-        if (requested <= 0) {
-            return Result.failed("economycore.exchange.not_convertible");
-        }
-        long unitPrice = buybackUnitOf(item, economy);
-        if (unitPrice <= 0) {
-            return Result.failed("economycore.exchange.not_convertible");
-        }
-
-        // Spendable, not balance. A wager is not debited when it is placed,
-        // so the balance still counts credits that a spin is waiting on.
-        // Buying items with them was a way of canceling a wager after
-        // betting had closed, since the round then dropped a stake it could
-        // no longer cover.
-        long balance = storage.balanceOf(player.getUUID());
-        long spendable = Commitments.players().spendable(player.getUUID(), balance);
-        // Multiplied exactly: a requested count large enough to overflow used
-        // to wrap negative and sail past the affordability check.
-        long cost;
-        try {
-            cost = Math.multiplyExact(requested, unitPrice);
-        } catch (ArithmeticException absurd) {
-            return Result.shortOf("economycore.exchange.cannot_afford",
-                    spendable / unitPrice, Long.MAX_VALUE);
-        }
-        if (cost > spendable) {
-            // Short of credits and short only because of a live wager are
-            // different problems. Saying "not enough credits" to somebody
-            // whose balance plainly covers it reads as a bug.
-            return Result.shortOf(cost <= balance
-                            ? "economycore.exchange.credits_promised"
-                            : "economycore.exchange.cannot_afford",
-                    spendable / unitPrice, cost);
-        }
-
-        long room = Inventories.spaceFor(player, item);
-        if (room < requested) {
-            return Result.shortOf("economycore.exchange.no_room_for", room, cost);
-        }
-        return commit(player, item, requested, cost,
-                economy.table().surchargeOn(ItemIds.idOf(item), requested), storage);
-    }
-
-    /** Takes the credits, then hands over the items. Both are known to work by now. */
-    private static Result commit(ServerPlayer player, Item item, long count,
-                                 long cost, long surcharge, CreditStorage storage) {
-        if (!storage.withdraw(player.getUUID(), cost)) {
-            return Result.failed("economycore.exchange.cannot_afford_one");
-        }
-        // The surcharge is the server's income: it goes to whoever receives
-        // that, or out of circulation if nobody does. See ServerIncome.
-        ServerIncome.collect(storage, TransactionType.SPREAD, surcharge,
-                ItemIds.idOf(item) + " x" + count);
-        Inventories.give(player, item, count);
-        return Result.ok(count, cost);
     }
 
     /** What one of these costs to buy back, surcharge included. */
