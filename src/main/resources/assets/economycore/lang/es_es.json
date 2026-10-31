@@ -5,8 +5,21 @@
   "block.economycore.shop": "Tienda",
 
   "item.economycore.admin_key": "Llave de staff",
+  "item.economycore.exchange_clerk_spawn_egg": "Huevo generador de cajero de la casa de cambio",
+  "item.economycore.shop_clerk_spawn_egg": "Huevo generador de dependiente de la tienda",
 
-  "economycore.admin.key_use": "Haz clic derecho en una casa de cambio o una tienda para configurarla",
+  "entity.economycore.exchange_clerk": "Cajero de la casa de cambio",
+  "entity.economycore.shop_clerk": "Dependiente de la tienda",
+
+  "economycore.clerk.look": "Aspecto: %s",
+  "economycore.clerk.look.suit": "Traje",
+  "economycore.clerk.look.vest": "Chaleco",
+  "economycore.clerk.look.blazer": "Americana",
+  "economycore.clerk.look.apron": "Delantal",
+  "economycore.clerk.look.smock": "Bata",
+  "economycore.clerk.look.merchant": "Mercader",
+
+  "economycore.admin.key_use": "Haz clic derecho en una casa de cambio, una tienda o su dependiente para configurarla",
   "economycore.admin.key_bound": "Emitida a %s…",
   "economycore.admin.key_unbound": "Sin emitir a nadie — solo para operadores",
   "economycore.admin.key_not_yours": "Esta llave no es tuya.",
@@ -208,6 +221,8 @@
 
   "economycore.help.title": "Comandos de Economy Core",
   "economycore.help.click_to_type": "Haz clic para escribirlo en el chat",
+  "economycore.help.exchange": "Abre la casa de cambio estés donde estés",
+  "economycore.help.shop": "Abre la tienda estés donde estés",
   "economycore.help.credits": "Tu saldo de créditos",
   "economycore.help.credits_balance_of": "El saldo de otro jugador, esté conectado o no",
   "economycore.help.credits_convert": "Convierte en créditos el objeto que traes en la mano",

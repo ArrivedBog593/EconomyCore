@@ -1,9 +1,11 @@
 package com.github.arrivedbog593.economycore;
 
 import com.github.arrivedbog593.economycore.platform.EconomyConfig;
+import com.github.arrivedbog593.economycore.platform.command.CounterCommands;
 import com.github.arrivedbog593.economycore.platform.registry.EconomyBlockEntities;
 import com.github.arrivedbog593.economycore.platform.registry.EconomyBlocks;
 import com.github.arrivedbog593.economycore.platform.registry.EconomyCreativeTabs;
+import com.github.arrivedbog593.economycore.platform.registry.EconomyEntities;
 import com.github.arrivedbog593.economycore.platform.registry.EconomyItems;
 import com.github.arrivedbog593.economycore.platform.registry.EconomyMenus;
 import net.neoforged.bus.api.IEventBus;
@@ -36,9 +38,11 @@ public final class EconomyCore {
     public EconomyCore(IEventBus modEventBus, ModContainer container) {
         EconomyBlocks.register(modEventBus);
         EconomyItems.register(modEventBus);
+        EconomyEntities.register(modEventBus);
         EconomyBlockEntities.register(modEventBus);
         EconomyMenus.register(modEventBus);
         EconomyCreativeTabs.register(modEventBus);
         container.registerConfig(ModConfig.Type.SERVER, EconomyConfig.SPEC);
+        modEventBus.addListener(CounterCommands::onConfigReloaded);
     }
 }

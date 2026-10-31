@@ -2,16 +2,13 @@ package com.github.arrivedbog593.economycore.platform.menu;
 
 import com.github.arrivedbog593.economycore.platform.EconomyData;
 import com.github.arrivedbog593.economycore.platform.item.AdminKeyItem;
-import com.github.arrivedbog593.economycore.platform.registry.EconomyBlocks;
 import com.github.arrivedbog593.economycore.platform.registry.EconomyMenus;
-import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.inventory.DataSlot;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
@@ -41,7 +38,7 @@ public class AdminExchangeMenu extends AbstractContainerMenu {
     public static final int INVENTORY_Y = 190;
     public static final int HOTBAR_Y = 248;
 
-    private final ContainerLevelAccess access;
+    private final MenuAnchor anchor;
     private final Player player;
 
     /** What is about to be priced. Never persisted; emptied back to the player. */
@@ -56,15 +53,19 @@ public class AdminExchangeMenu extends AbstractContainerMenu {
      */
     private final DataSlot spread = DataSlot.standalone();
 
-    /** Client-side constructor: reads the block position the server wrote. */
+    /**
+     * Client-side constructor. The server writes nothing: only it ever asks
+     * whether the screen may stay open, so the client has no use for where
+     * it was opened from.
+     */
     public AdminExchangeMenu(int containerId, Inventory inventory, FriendlyByteBuf buffer) {
-        this(containerId, inventory, buffer.readBlockPos());
+        this(containerId, inventory, MenuAnchor.ANYWHERE);
     }
 
-    public AdminExchangeMenu(int containerId, Inventory inventory, BlockPos pos) {
+    public AdminExchangeMenu(int containerId, Inventory inventory, MenuAnchor anchor) {
         super(EconomyMenus.ADMIN_EXCHANGE.get(), containerId);
         this.player = inventory.player;
-        this.access = ContainerLevelAccess.create(inventory.player.level(), pos);
+        this.anchor = anchor;
 
         addSlot(new Slot(input, 0, INPUT_X, INPUT_Y));
 
@@ -119,15 +120,14 @@ public class AdminExchangeMenu extends AbstractContainerMenu {
                 && !AdminKeyItem.mayAdminister(server, server.getMainHandItem())) {
             return false;
         }
-        // Vanilla's check covers the block still being there as well as reach.
-        return stillValid(access, who, EconomyBlocks.exchange());
+        return anchor.stillValid(who);
     }
 
     @Override
     public void removed(@NotNull Player who) {
         super.removed(who);
         // The stack was only ever borrowed to name an item.
-        access.execute((level, pos) -> clearContainer(who, input));
+        clearContainer(who, input);
     }
 
     @Override

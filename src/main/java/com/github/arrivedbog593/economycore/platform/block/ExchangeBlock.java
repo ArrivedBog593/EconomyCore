@@ -1,18 +1,15 @@
 package com.github.arrivedbog593.economycore.platform.block;
 
 import com.github.arrivedbog593.economycore.platform.item.AdminKeyItem;
-import com.github.arrivedbog593.economycore.platform.menu.AdminExchangeMenu;
-import com.github.arrivedbog593.economycore.platform.network.ExchangeCatalogPayload;
+import com.github.arrivedbog593.economycore.platform.menu.Counter;
+import com.github.arrivedbog593.economycore.platform.menu.MenuAnchor;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.ItemInteractionResult;
-import net.minecraft.world.MenuProvider;
-import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
@@ -26,7 +23,6 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.BlockHitResult;
-import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -73,9 +69,7 @@ public class ExchangeBlock extends BaseEntityBlock {
     /**
      * The administration card opens the settings screen instead of the till.
      * <p>
-     * Mirrors the shop block exactly, including consuming the click when the
-     * card is not theirs: falling through would open the customer's exchange,
-     * which reads as the card having worked.
+     * Mirrors the shop block exactly, through {@link Counter#administer}.
      */
     @Override
     protected @NotNull ItemInteractionResult useItemOn(ItemStack stack, @NotNull BlockState state,
@@ -92,18 +86,7 @@ public class ExchangeBlock extends BaseEntityBlock {
         if (!(player instanceof ServerPlayer serverPlayer)) {
             return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
         }
-        if (!AdminKeyItem.mayAdminister(serverPlayer, stack)) {
-            serverPlayer.displayClientMessage(
-                    Component.translatable("economycore.admin.key_not_yours"), true);
-            return ItemInteractionResult.CONSUME;
-        }
-
-        PacketDistributor.sendToPlayer(serverPlayer, ExchangeCatalogPayload.current());
-        serverPlayer.openMenu(new SimpleMenuProvider(
-                        (containerId, inventory, who) ->
-                                new AdminExchangeMenu(containerId, inventory, pos),
-                        Component.translatable("economycore.admin.exchange.title")),
-                buffer -> buffer.writeBlockPos(pos));
+        Counter.EXCHANGE.administer(serverPlayer, stack, MenuAnchor.block(level, pos, this));
         return ItemInteractionResult.CONSUME;
     }
 
@@ -113,15 +96,10 @@ public class ExchangeBlock extends BaseEntityBlock {
         if (level.isClientSide) {
             return InteractionResult.SUCCESS;
         }
-        if (!(level.getBlockEntity(pos) instanceof MenuProvider provider)
-                || !(player instanceof ServerPlayer serverPlayer)) {
+        if (!(player instanceof ServerPlayer serverPlayer)) {
             return InteractionResult.PASS;
         }
-
-        // The catalog has to reach the client before the screen opens, or
-        // the first frame renders an empty list.
-        PacketDistributor.sendToPlayer(serverPlayer, ExchangeCatalogPayload.current());
-        serverPlayer.openMenu(provider, buffer -> buffer.writeBlockPos(pos));
+        Counter.EXCHANGE.open(serverPlayer, MenuAnchor.block(level, pos, this));
         return InteractionResult.CONSUME;
     }
 }

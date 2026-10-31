@@ -5,6 +5,7 @@ import com.github.arrivedbog593.economycore.platform.item.AdminKeyItem;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.common.DeferredSpawnEggItem;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
@@ -18,6 +19,19 @@ public final class EconomyItems {
 
     public static final DeferredItem<BlockItem> SHOP =
             ITEMS.registerSimpleBlockItem("shop", EconomyBlocks.SHOP, new Item.Properties());
+
+    /**
+     * Clerks, put down like any mob. No staff rank asked: an egg in survival
+     * only ever comes out of creative, and whoever has creative can already
+     * place the blocks they stand in for.
+     */
+    public static final DeferredItem<DeferredSpawnEggItem> EXCHANGE_CLERK_SPAWN_EGG =
+            ITEMS.register("exchange_clerk_spawn_egg", () -> new DeferredSpawnEggItem(
+                    EconomyEntities.EXCHANGE_CLERK, 0xC9A227, 0x2B2B2B, new Item.Properties()));
+
+    public static final DeferredItem<DeferredSpawnEggItem> SHOP_CLERK_SPAWN_EGG =
+            ITEMS.register("shop_clerk_spawn_egg", () -> new DeferredSpawnEggItem(
+                    EconomyEntities.SHOP_CLERK, 0x3C8D4F, 0xE8E0C8, new Item.Properties()));
 
     /**
      * Opens a casino block's settings instead of using it.

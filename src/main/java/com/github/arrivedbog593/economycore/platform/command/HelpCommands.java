@@ -1,5 +1,6 @@
 package com.github.arrivedbog593.economycore.platform.command;
 
+import com.github.arrivedbog593.economycore.platform.menu.Counter;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -41,10 +42,15 @@ public final class HelpCommands {
 
     /**
      * Grouped the way the commands are, and in the order somebody meets them:
-     * their own credits first, then the machinery behind the exchange and the
-     * shop.
+     * the counters and their own credits first, then the machinery behind the
+     * exchange and the shop.
      */
     private static final List<Entry> ENTRIES = List.of(
+            new Entry("/exchange", "economycore.help.exchange",
+                    source -> CounterCommands.mayOpen(source, Counter.EXCHANGE)),
+            new Entry("/shop", "economycore.help.shop",
+                    source -> CounterCommands.mayOpen(source, Counter.SHOP)),
+
             new Entry("/credits", "economycore.help.credits", EVERYONE),
             new Entry("/credits balance <player>", "economycore.help.credits_balance_of", BANK),
             new Entry("/credits convert", "economycore.help.credits_convert", EVERYONE),

@@ -22,6 +22,8 @@ public final class EconomyCreativeTabs {
                     .displayItems((parameters, output) -> {
                         output.accept(EconomyItems.EXCHANGE.get());
                         output.accept(EconomyItems.SHOP.get());
+                        output.accept(EconomyItems.EXCHANGE_CLERK_SPAWN_EGG.get());
+                        output.accept(EconomyItems.SHOP_CLERK_SPAWN_EGG.get());
                         // Unbound, so it works for operators and nobody else.
                         // Anyone administering without operator rights gets a
                         // bound one from the command instead.

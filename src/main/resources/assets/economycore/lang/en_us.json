@@ -5,8 +5,21 @@
   "block.economycore.shop": "Shop",
 
   "item.economycore.admin_key": "Staff Key",
+  "item.economycore.exchange_clerk_spawn_egg": "Exchange Clerk Spawn Egg",
+  "item.economycore.shop_clerk_spawn_egg": "Shop Clerk Spawn Egg",
 
-  "economycore.admin.key_use": "Right click an exchange or a shop to configure it",
+  "entity.economycore.exchange_clerk": "Exchange Clerk",
+  "entity.economycore.shop_clerk": "Shop Clerk",
+
+  "economycore.clerk.look": "Look: %s",
+  "economycore.clerk.look.suit": "Suit",
+  "economycore.clerk.look.vest": "Vest",
+  "economycore.clerk.look.blazer": "Blazer",
+  "economycore.clerk.look.apron": "Apron",
+  "economycore.clerk.look.smock": "Smock",
+  "economycore.clerk.look.merchant": "Merchant",
+
+  "economycore.admin.key_use": "Right click an exchange, a shop or their clerk to configure it",
   "economycore.admin.key_bound": "Issued to %s…",
   "economycore.admin.key_unbound": "Not issued to anyone — operators only",
   "economycore.admin.key_not_yours": "This key is not yours to use.",
@@ -208,6 +221,8 @@
 
   "economycore.help.title": "Economy Core commands",
   "economycore.help.click_to_type": "Click to put this in the chat box",
+  "economycore.help.exchange": "Open the exchange from wherever you are",
+  "economycore.help.shop": "Open the shop from wherever you are",
   "economycore.help.credits": "Your credit balance",
   "economycore.help.credits_balance_of": "Somebody else's balance, online or not",
   "economycore.help.credits_convert": "Turn the item you are holding into credits",

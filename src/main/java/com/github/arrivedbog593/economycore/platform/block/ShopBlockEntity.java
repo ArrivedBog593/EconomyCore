@@ -1,17 +1,9 @@
 package com.github.arrivedbog593.economycore.platform.block;
 
-import com.github.arrivedbog593.economycore.platform.menu.ShopMenu;
 import com.github.arrivedbog593.economycore.platform.registry.EconomyBlockEntities;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.chat.Component;
-import net.minecraft.world.MenuProvider;
-import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * The shop's presence in the world.
@@ -20,20 +12,9 @@ import org.jetbrains.annotations.Nullable;
  * rather than to simulate a supply chain, and a shop that runs out stops
  * doing its one job at exactly the moment the economy needs it most.
  */
-public class ShopBlockEntity extends BlockEntity implements MenuProvider {
+public class ShopBlockEntity extends BlockEntity {
 
     public ShopBlockEntity(BlockPos pos, BlockState state) {
         super(EconomyBlockEntities.SHOP.get(), pos, state);
-    }
-
-    @Override
-    public @NotNull Component getDisplayName() {
-        return Component.translatable("block.economycore.shop");
-    }
-
-    @Nullable
-    @Override
-    public AbstractContainerMenu createMenu(int containerId, @NotNull Inventory inventory, @NotNull Player player) {
-        return new ShopMenu(containerId, inventory, getBlockPos());
     }
 }

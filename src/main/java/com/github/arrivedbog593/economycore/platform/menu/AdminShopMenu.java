@@ -1,16 +1,13 @@
 package com.github.arrivedbog593.economycore.platform.menu;
 
 import com.github.arrivedbog593.economycore.platform.item.AdminKeyItem;
-import com.github.arrivedbog593.economycore.platform.registry.EconomyBlocks;
 import com.github.arrivedbog593.economycore.platform.registry.EconomyMenus;
-import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.NotNull;
@@ -42,19 +39,23 @@ public class AdminShopMenu extends AbstractContainerMenu {
     public static final int INVENTORY_Y = 171;
     public static final int HOTBAR_Y = 229;
 
-    private final ContainerLevelAccess access;
+    private final MenuAnchor anchor;
 
     /** What is about to be listed. Never persisted; emptied back to the player. */
     private final SimpleContainer input = new SimpleContainer(1);
 
-    /** Client-side constructor: reads the block position the server wrote. */
+    /**
+     * Client-side constructor. The server writes nothing: only it ever asks
+     * whether the screen may stay open, so the client has no use for where
+     * it was opened from.
+     */
     public AdminShopMenu(int containerId, Inventory inventory, FriendlyByteBuf buffer) {
-        this(containerId, inventory, buffer.readBlockPos());
+        this(containerId, inventory, MenuAnchor.ANYWHERE);
     }
 
-    public AdminShopMenu(int containerId, Inventory inventory, BlockPos pos) {
+    public AdminShopMenu(int containerId, Inventory inventory, MenuAnchor anchor) {
         super(EconomyMenus.ADMIN_SHOP.get(), containerId);
-        this.access = ContainerLevelAccess.create(inventory.player.level(), pos);
+        this.anchor = anchor;
 
         addSlot(new Slot(input, 0, INPUT_X, INPUT_Y));
 
@@ -94,15 +95,14 @@ public class AdminShopMenu extends AbstractContainerMenu {
                 && !AdminKeyItem.mayAdminister(server, server.getMainHandItem())) {
             return false;
         }
-        // Vanilla's check covers the block still being there as well as reach.
-        return stillValid(access, who, EconomyBlocks.shop());
+        return anchor.stillValid(who);
     }
 
     @Override
     public void removed(@NotNull Player who) {
         super.removed(who);
         // The stack was only ever borrowed to describe a sale.
-        access.execute((level, pos) -> clearContainer(who, input));
+        clearContainer(who, input);
     }
 
     @Override

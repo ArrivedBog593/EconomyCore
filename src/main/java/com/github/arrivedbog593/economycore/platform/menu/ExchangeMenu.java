@@ -7,9 +7,7 @@ import com.github.arrivedbog593.economycore.platform.CreditStorage;
 import com.github.arrivedbog593.economycore.platform.EconomyEvents;
 import com.github.arrivedbog593.economycore.platform.EconomyManager;
 import com.github.arrivedbog593.economycore.platform.ItemIds;
-import com.github.arrivedbog593.economycore.platform.registry.EconomyBlocks;
 import com.github.arrivedbog593.economycore.platform.registry.EconomyMenus;
-import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
@@ -17,7 +15,6 @@ import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.inventory.DataSlot;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
@@ -77,7 +74,7 @@ public class ExchangeMenu extends AbstractContainerMenu {
         }
     };
 
-    private final ContainerLevelAccess access;
+    private final MenuAnchor anchor;
     private final Player player;
 
     /**
@@ -102,15 +99,19 @@ public class ExchangeMenu extends AbstractContainerMenu {
     /** What the tray is currently worth, so the button can show it. */
     private final DataSlot depositValue = DataSlot.standalone();
 
-    /** Client-side constructor: reads the block position the server wrote. */
+    /**
+     * Client-side constructor. The server writes nothing: only it ever asks
+     * whether the screen may stay open, so the client has no use for where
+     * it was opened from.
+     */
     public ExchangeMenu(int containerId, Inventory inventory, FriendlyByteBuf buffer) {
-        this(containerId, inventory, buffer.readBlockPos());
+        this(containerId, inventory, MenuAnchor.ANYWHERE);
     }
 
-    public ExchangeMenu(int containerId, Inventory inventory, BlockPos pos) {
+    public ExchangeMenu(int containerId, Inventory inventory, MenuAnchor anchor) {
         super(EconomyMenus.EXCHANGE.get(), containerId);
         this.player = inventory.player;
-        this.access = ContainerLevelAccess.create(inventory.player.level(), pos);
+        this.anchor = anchor;
 
         for (int row = 0; row < DEPOSIT_ROWS; row++) {
             for (int column = 0; column < DEPOSIT_COLUMNS; column++) {
@@ -348,6 +349,6 @@ public class ExchangeMenu extends AbstractContainerMenu {
 
     @Override
     public boolean stillValid(@NotNull Player who) {
-        return stillValid(access, who, EconomyBlocks.exchange());
+        return anchor.stillValid(who);
     }
 }

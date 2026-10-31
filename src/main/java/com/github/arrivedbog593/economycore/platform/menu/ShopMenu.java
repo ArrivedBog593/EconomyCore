@@ -2,14 +2,11 @@ package com.github.arrivedbog593.economycore.platform.menu;
 
 import com.github.arrivedbog593.economycore.platform.Commitments;
 import com.github.arrivedbog593.economycore.platform.CreditStorage;
-import com.github.arrivedbog593.economycore.platform.registry.EconomyBlocks;
 import com.github.arrivedbog593.economycore.platform.registry.EconomyMenus;
-import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.inventory.DataSlot;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
@@ -33,7 +30,7 @@ import org.jetbrains.annotations.NotNull;
  */
 public class ShopMenu extends AbstractContainerMenu {
 
-    private final ContainerLevelAccess access;
+    private final MenuAnchor anchor;
     private final Player player;
 
     /** Balance is long; data slots carry ints, so it travels in halves. */
@@ -76,15 +73,19 @@ public class ShopMenu extends AbstractContainerMenu {
     public static final int INVENTORY_Y = 181;
     public static final int HOTBAR_Y = 239;
 
-    /** Client-side constructor: reads the block position the server wrote. */
+    /**
+     * Client-side constructor. The server writes nothing: only it ever asks
+     * whether the screen may stay open, so the client has no use for where
+     * it was opened from.
+     */
     public ShopMenu(int containerId, Inventory inventory, FriendlyByteBuf buffer) {
-        this(containerId, inventory, buffer.readBlockPos());
+        this(containerId, inventory, MenuAnchor.ANYWHERE);
     }
 
-    public ShopMenu(int containerId, Inventory inventory, BlockPos pos) {
+    public ShopMenu(int containerId, Inventory inventory, MenuAnchor anchor) {
         super(EconomyMenus.SHOP.get(), containerId);
         this.player = inventory.player;
-        this.access = ContainerLevelAccess.create(inventory.player.level(), pos);
+        this.anchor = anchor;
 
         // Centered under a panel that is no longer a fixed 176 wide. The
         // screen draws its frame from rectangles rather than a texture, so
@@ -166,6 +167,6 @@ public class ShopMenu extends AbstractContainerMenu {
 
     @Override
     public boolean stillValid(@NotNull Player who) {
-        return stillValid(access, who, EconomyBlocks.shop());
+        return anchor.stillValid(who);
     }
 }

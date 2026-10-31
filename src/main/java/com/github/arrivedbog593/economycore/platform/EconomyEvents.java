@@ -3,6 +3,7 @@ package com.github.arrivedbog593.economycore.platform;
 import com.github.arrivedbog593.economycore.EconomyCore;
 import com.github.arrivedbog593.economycore.api.TransactionType;
 import com.github.arrivedbog593.economycore.platform.command.BankCommands;
+import com.github.arrivedbog593.economycore.platform.command.CounterCommands;
 import com.github.arrivedbog593.economycore.platform.command.CreditCommands;
 import com.github.arrivedbog593.economycore.platform.command.EconomyCommands;
 import com.github.arrivedbog593.economycore.platform.command.HelpCommands;
@@ -122,6 +123,7 @@ public final class EconomyEvents {
         HelpCommands.register(event.getDispatcher());
         BankCommands.register(event.getDispatcher());
         CreditCommands.register(event.getDispatcher());
+        CounterCommands.register(event.getDispatcher());
         EconomyCommands.register(event.getDispatcher());
         StaffCommands.register(event.getDispatcher());
     }

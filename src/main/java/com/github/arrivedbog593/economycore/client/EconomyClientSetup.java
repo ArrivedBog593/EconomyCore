@@ -1,10 +1,12 @@
 package com.github.arrivedbog593.economycore.client;
 
 import com.github.arrivedbog593.economycore.EconomyCore;
+import com.github.arrivedbog593.economycore.platform.registry.EconomyEntities;
 import com.github.arrivedbog593.economycore.platform.registry.EconomyMenus;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 
 /**
@@ -14,7 +16,8 @@ import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
  * classpath, so loading this class there would crash before the world opened.
  * <p>
  * The exchange and the shop really are containers — they move items — so they
- * get menus, and their screens are bound to those menus here.
+ * get menus, and their screens are bound to those menus here. So is the
+ * renderer that draws the clerks who stand behind them.
  */
 @EventBusSubscriber(modid = EconomyCore.MOD_ID, value = Dist.CLIENT)
 public final class EconomyClientSetup {
@@ -28,5 +31,11 @@ public final class EconomyClientSetup {
         event.register(EconomyMenus.SHOP.get(), ShopScreen::new);
         event.register(EconomyMenus.ADMIN_SHOP.get(), AdminShopScreen::new);
         event.register(EconomyMenus.ADMIN_EXCHANGE.get(), AdminExchangeScreen::new);
+    }
+
+    @SubscribeEvent
+    public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
+        event.registerEntityRenderer(EconomyEntities.EXCHANGE_CLERK.get(), ClerkRenderer::new);
+        event.registerEntityRenderer(EconomyEntities.SHOP_CLERK.get(), ClerkRenderer::new);
     }
 }

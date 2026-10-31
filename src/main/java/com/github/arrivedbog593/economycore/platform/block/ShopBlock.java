@@ -1,18 +1,15 @@
 package com.github.arrivedbog593.economycore.platform.block;
 
 import com.github.arrivedbog593.economycore.platform.item.AdminKeyItem;
-import com.github.arrivedbog593.economycore.platform.menu.AdminShopMenu;
-import com.github.arrivedbog593.economycore.platform.network.ShopCatalogPayload;
+import com.github.arrivedbog593.economycore.platform.menu.Counter;
+import com.github.arrivedbog593.economycore.platform.menu.MenuAnchor;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.ItemInteractionResult;
-import net.minecraft.world.MenuProvider;
-import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
@@ -26,7 +23,6 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.BlockHitResult;
-import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -80,11 +76,14 @@ public class ShopBlock extends BaseEntityBlock {
      * Here rather than on the key itself. The server tries the block first and
      * only reaches {@code Item.useOn} if nothing consumed the click, so a
      * check written on the item never ran — this block had already opened the
-     * customer's shop and consumed the action.
+     * customer's shop and consumed the action. The key is checked in
+     * {@link Counter#administer}, shared with the shop's clerk.
      */
     @Override
-    protected @NotNull ItemInteractionResult useItemOn(ItemStack stack, @NotNull BlockState state, @NotNull Level level,
-                                                       @NotNull BlockPos pos, @NotNull Player player, @NotNull InteractionHand hand,
+    protected @NotNull ItemInteractionResult useItemOn(ItemStack stack, @NotNull BlockState state,
+                                                       @NotNull Level level, @NotNull BlockPos pos,
+                                                       @NotNull Player player,
+                                                       @NotNull InteractionHand hand,
                                                        @NotNull BlockHitResult hit) {
         if (!(stack.getItem() instanceof AdminKeyItem)) {
             return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
@@ -95,21 +94,7 @@ public class ShopBlock extends BaseEntityBlock {
         if (!(player instanceof ServerPlayer serverPlayer)) {
             return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
         }
-        if (!AdminKeyItem.mayAdminister(serverPlayer, stack)) {
-            serverPlayer.displayClientMessage(
-                    Component.translatable("economycore.admin.key_not_yours"), true);
-            // Consumed rather than passed on: falling through would open the
-            // customer's shop, which reads as the key having worked.
-            return ItemInteractionResult.CONSUME;
-        }
-
-        PacketDistributor.sendToPlayer(serverPlayer,
-                ShopCatalogPayload.current(level.getServer()));
-        serverPlayer.openMenu(new SimpleMenuProvider(
-                        (containerId, inventory, who) ->
-                                new AdminShopMenu(containerId, inventory, pos),
-                        Component.translatable("economycore.admin.shop.title")),
-                buffer -> buffer.writeBlockPos(pos));
+        Counter.SHOP.administer(serverPlayer, stack, MenuAnchor.block(level, pos, this));
         return ItemInteractionResult.CONSUME;
     }
 
@@ -119,15 +104,10 @@ public class ShopBlock extends BaseEntityBlock {
         if (level.isClientSide) {
             return InteractionResult.SUCCESS;
         }
-        if (!(level.getBlockEntity(pos) instanceof MenuProvider provider)
-                || !(player instanceof ServerPlayer serverPlayer)) {
+        if (!(player instanceof ServerPlayer serverPlayer)) {
             return InteractionResult.PASS;
         }
-
-        // The catalog has to reach the client before the screen opens, or
-        // the first frame renders an empty shop.
-        PacketDistributor.sendToPlayer(serverPlayer, ShopCatalogPayload.current(level.getServer()));
-        serverPlayer.openMenu(provider, buffer -> buffer.writeBlockPos(pos));
+        Counter.SHOP.open(serverPlayer, MenuAnchor.block(level, pos, this));
         return InteractionResult.CONSUME;
     }
 }
