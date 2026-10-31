@@ -118,7 +118,7 @@ repositories {
 }
 
 dependencies {
-    implementation "curse.maven:economy-core-<projectId>:<fileId>"
+    implementation "curse.maven:economy-core-1775541:<fileId>"
 }
 ```
 
