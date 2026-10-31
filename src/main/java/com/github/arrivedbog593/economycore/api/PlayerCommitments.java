@@ -1,4 +1,4 @@
-package com.github.arrivedbog593.economycore.engine;
+package com.github.arrivedbog593.economycore.api;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -11,10 +11,9 @@ import java.util.UUID;
  * not settled, a bid in an auction that has not closed.
  * <p>
  * A promise is not debited when it is made — a wager, for instance, moves at
- * settlement, which is what makes abandoning a round its own refund. Wagers are
- * also where the hole this closes was found. They are not debited when they are placed — they move at settlement, which
- * is what makes abandoning a round its own refund. The gap that leaves is that
- * a balance can be spent somewhere else while a wager is still live. A player
+ * settlement, which is what makes abandoning a round its own refund. The gap
+ * that leaves is that a balance can be spent somewhere else while a wager is
+ * still live, which is where the hole this closes was found. A player
  * could bet everything, wait for betting to lock, buy an item at the exchange
  * with the same credits, and watch the spin drop a wager they could no longer
  * cover. They neither won nor lost it: a cancellation, during the one phase

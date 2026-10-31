@@ -1,6 +1,6 @@
 package com.github.arrivedbog593.economycore.platform;
 
-import com.github.arrivedbog593.economycore.engine.PlayerCommitments;
+import com.github.arrivedbog593.economycore.api.PlayerCommitments;
 import net.minecraft.server.MinecraftServer;
 
 import java.util.UUID;

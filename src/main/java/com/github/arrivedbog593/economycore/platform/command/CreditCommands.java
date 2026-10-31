@@ -1,13 +1,14 @@
 package com.github.arrivedbog593.economycore.platform.command;
 
+import com.github.arrivedbog593.economycore.api.CreditFormat;
+import com.github.arrivedbog593.economycore.api.TransactionType;
 import com.github.arrivedbog593.economycore.engine.CreditAccount;
-import com.github.arrivedbog593.economycore.engine.TransactionType;
 import com.github.arrivedbog593.economycore.platform.Commitments;
 import com.github.arrivedbog593.economycore.platform.CreditExchange;
-import com.github.arrivedbog593.economycore.platform.CreditFormat;
 import com.github.arrivedbog593.economycore.platform.CreditStorage;
 import com.github.arrivedbog593.economycore.platform.EconomyEvents;
 import com.github.arrivedbog593.economycore.platform.ItemIds;
+import com.mojang.authlib.GameProfile;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -15,12 +16,14 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
+import net.minecraft.commands.arguments.GameProfileArgument;
 import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
+import java.util.Collection;
 import java.util.Optional;
 
 /**
@@ -51,7 +54,13 @@ public final class CreditCommands {
         root.executes(context -> showBalance(context.getSource()));
 
         root.then(Commands.literal("balance")
-                .executes(context -> showBalance(context.getSource())));
+                .executes(context -> showBalance(context.getSource()))
+                // Somebody else's: staff work, and asked about players who
+                // are offline as often as online, so any known profile will do.
+                .then(Commands.argument("player", GameProfileArgument.gameProfile())
+                        .requires(StaffAccess::adminOrOperator)
+                        .executes(context -> showBalanceOf(context.getSource(),
+                                GameProfileArgument.getGameProfiles(context, "player")))));
 
         root.then(Commands.literal("convert")
                 .executes(context -> convertHeld(context.getSource())));
@@ -121,6 +130,24 @@ public final class CreditCommands {
         source.sendSuccess(() -> Component.translatable(
                 "economycore.command.credits.balance", balance), false);
         return (int) Math.min(Integer.MAX_VALUE, balance);
+    }
+
+    /**
+     * Other players' balances, for staff, with what each has set aside at a
+     * game table or in a bid: that part is in the balance but cannot be spent or taken.
+     */
+    private static int showBalanceOf(CommandSourceStack source, Collection<GameProfile> profiles) {
+        CreditStorage storage = CreditStorage.get(source.getServer());
+        for (GameProfile profile : profiles) {
+            long balance = storage.balanceOf(profile.getId());
+            long promised = Commitments.players().committedBy(profile.getId());
+            source.sendSuccess(() -> promised > 0
+                    ? Component.translatable("economycore.command.credits.balance_of_promised",
+                    profile.getName(), CreditFormat.of(balance), CreditFormat.of(promised))
+                    : Component.translatable("economycore.command.credits.balance_of",
+                    profile.getName(), CreditFormat.of(balance)), false);
+        }
+        return profiles.size();
     }
 
     /**

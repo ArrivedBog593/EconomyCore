@@ -1,7 +1,7 @@
 package com.github.arrivedbog593.economycore.platform;
 
+import com.github.arrivedbog593.economycore.api.TransactionType;
 import com.github.arrivedbog593.economycore.engine.TransactionRecord;
-import com.github.arrivedbog593.economycore.engine.TransactionType;
 
 import java.util.Objects;
 

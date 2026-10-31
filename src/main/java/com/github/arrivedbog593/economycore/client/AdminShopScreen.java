@@ -579,7 +579,7 @@ public class AdminShopScreen extends AbstractContainerScreen<AdminShopMenu> {
     }
 
     private static String format(long credits) {
-        return com.github.arrivedbog593.economycore.platform.CreditFormat.of(credits);
+        return com.github.arrivedbog593.economycore.api.CreditFormat.of(credits);
     }
 
     /** Short enough for a grid cell; the tooltip carries the exact figure. */

@@ -1,5 +1,6 @@
 package com.github.arrivedbog593.economycore.engine;
 
+import com.github.arrivedbog593.economycore.api.TransactionType;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

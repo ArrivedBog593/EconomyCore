@@ -1,5 +1,7 @@
 package com.github.arrivedbog593.economycore.engine;
 
+import com.github.arrivedbog593.economycore.api.TransactionType;
+
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;

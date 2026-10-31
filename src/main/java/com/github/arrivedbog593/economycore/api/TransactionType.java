@@ -1,4 +1,4 @@
-package com.github.arrivedbog593.economycore.engine;
+package com.github.arrivedbog593.economycore.api;
 
 import java.util.ArrayList;
 import java.util.Collections;

@@ -1,7 +1,7 @@
 package com.github.arrivedbog593.economycore.platform.command;
 
+import com.github.arrivedbog593.economycore.api.StaffRank;
 import com.github.arrivedbog593.economycore.platform.EconomyData;
-import com.github.arrivedbog593.economycore.platform.StaffRank;
 import com.github.arrivedbog593.economycore.platform.item.AdminKeyItem;
 import com.mojang.authlib.GameProfile;
 import com.mojang.brigadier.CommandDispatcher;

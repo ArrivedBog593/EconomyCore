@@ -1,7 +1,7 @@
 package com.github.arrivedbog593.economycore.platform;
 
 import com.github.arrivedbog593.economycore.EconomyCore;
-import com.github.arrivedbog593.economycore.engine.TransactionType;
+import com.github.arrivedbog593.economycore.api.TransactionType;
 import com.github.arrivedbog593.economycore.platform.command.BankCommands;
 import com.github.arrivedbog593.economycore.platform.command.CreditCommands;
 import com.github.arrivedbog593.economycore.platform.command.EconomyCommands;

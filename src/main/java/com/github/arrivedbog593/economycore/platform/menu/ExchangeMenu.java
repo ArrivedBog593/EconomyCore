@@ -1,6 +1,6 @@
 package com.github.arrivedbog593.economycore.platform.menu;
 
-import com.github.arrivedbog593.economycore.engine.TransactionType;
+import com.github.arrivedbog593.economycore.api.TransactionType;
 import com.github.arrivedbog593.economycore.platform.Commitments;
 import com.github.arrivedbog593.economycore.platform.CreditExchange;
 import com.github.arrivedbog593.economycore.platform.CreditStorage;

@@ -1,6 +1,6 @@
 package com.github.arrivedbog593.economycore.client;
 
-import com.github.arrivedbog593.economycore.platform.CreditFormat;
+import com.github.arrivedbog593.economycore.api.CreditFormat;
 import com.github.arrivedbog593.economycore.platform.ItemIds;
 import com.github.arrivedbog593.economycore.platform.menu.AdminExchangeMenu;
 import com.github.arrivedbog593.economycore.platform.network.AdminExchangeActionPayload;

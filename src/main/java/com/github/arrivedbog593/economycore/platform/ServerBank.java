@@ -1,7 +1,7 @@
 package com.github.arrivedbog593.economycore.platform;
 
+import com.github.arrivedbog593.economycore.api.TransactionType;
 import com.github.arrivedbog593.economycore.engine.CreditAccount;
-import com.github.arrivedbog593.economycore.engine.TransactionType;
 
 import java.util.Map;
 import java.util.Objects;

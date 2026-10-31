@@ -1,8 +1,8 @@
 package com.github.arrivedbog593.economycore.platform.command;
 
+import com.github.arrivedbog593.economycore.api.CreditFormat;
+import com.github.arrivedbog593.economycore.api.TransactionType;
 import com.github.arrivedbog593.economycore.engine.CreditAccount;
-import com.github.arrivedbog593.economycore.engine.TransactionType;
-import com.github.arrivedbog593.economycore.platform.CreditFormat;
 import com.github.arrivedbog593.economycore.platform.CreditStorage;
 import com.github.arrivedbog593.economycore.platform.ServerBank;
 import com.github.arrivedbog593.economycore.platform.ServerIncome;

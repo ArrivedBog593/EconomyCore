@@ -1,7 +1,7 @@
 package com.github.arrivedbog593.economycore.platform.network;
 
 import com.github.arrivedbog593.economycore.EconomyCore;
-import com.github.arrivedbog593.economycore.platform.CreditFormat;
+import com.github.arrivedbog593.economycore.api.CreditFormat;
 import com.github.arrivedbog593.economycore.platform.CreditStorage;
 import com.github.arrivedbog593.economycore.platform.ShopExchange;
 import com.github.arrivedbog593.economycore.platform.menu.ShopMenu;

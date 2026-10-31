@@ -1,4 +1,4 @@
-package com.github.arrivedbog593.economycore.platform;
+package com.github.arrivedbog593.economycore.api;
 
 import java.util.Locale;
 

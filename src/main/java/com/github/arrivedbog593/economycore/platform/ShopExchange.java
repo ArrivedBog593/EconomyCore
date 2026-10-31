@@ -1,6 +1,7 @@
 package com.github.arrivedbog593.economycore.platform;
 
-import com.github.arrivedbog593.economycore.engine.TransactionType;
+import com.github.arrivedbog593.economycore.api.CreditFormat;
+import com.github.arrivedbog593.economycore.api.TransactionType;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 

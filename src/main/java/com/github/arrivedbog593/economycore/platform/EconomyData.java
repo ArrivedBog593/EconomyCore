@@ -1,5 +1,6 @@
 package com.github.arrivedbog593.economycore.platform;
 
+import com.github.arrivedbog593.economycore.api.StaffRank;
 import com.github.arrivedbog593.economycore.engine.CreditValueTable;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.HolderLookup;

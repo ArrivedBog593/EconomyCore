@@ -46,6 +46,7 @@ public final class HelpCommands {
      */
     private static final List<Entry> ENTRIES = List.of(
             new Entry("/credits", "economycore.help.credits", EVERYONE),
+            new Entry("/credits balance <player>", "economycore.help.credits_balance_of", BANK),
             new Entry("/credits convert", "economycore.help.credits_convert", EVERYONE),
             new Entry("/credits redeem <item> [count]", "economycore.help.credits_redeem", EVERYONE),
             new Entry("/credits pay <player> <amount>", "economycore.help.credits_pay", EVERYONE),
