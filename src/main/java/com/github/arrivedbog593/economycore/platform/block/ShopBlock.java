@@ -13,6 +13,7 @@ import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.Block;
@@ -23,6 +24,9 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -38,6 +42,11 @@ public class ShopBlock extends BaseEntityBlock {
     public static final MapCodec<ShopBlock> CODEC = simpleCodec(ShopBlock::new);
 
     public static final EnumProperty<Direction> FACING = HorizontalDirectionalBlock.FACING;
+
+    /** The cabinet, inset under the counter, and the vitrine on top, as the model draws them. */
+    private static final VoxelShape SHAPE = Shapes.or(
+            Block.box(1, 0, 1, 15, 8, 15),
+            Block.box(0, 8, 0, 16, 16, 16));
 
     public ShopBlock(Properties properties) {
         super(properties);
@@ -58,6 +67,12 @@ public class ShopBlock extends BaseEntityBlock {
     public BlockState getStateForPlacement(BlockPlaceContext context) {
         return defaultBlockState()
                 .setValue(FACING, context.getHorizontalDirection().getOpposite());
+    }
+
+    @Override
+    protected @NotNull VoxelShape getShape(@NotNull BlockState state, @NotNull BlockGetter level,
+                                           @NotNull BlockPos pos, @NotNull CollisionContext context) {
+        return SHAPE;
     }
 
     @Override

@@ -23,7 +23,9 @@ public final class EconomyBlocks {
             BlockBehaviour.Properties.of()
                     .mapColor(MapColor.GOLD)
                     .strength(3.5F, 9.0F)
-                    .sound(SoundType.METAL)
+                    .sound(SoundType.WOOD)
+                    // Not a full cube: neighbors must not hide their faces behind it.
+                    .noOcclusion()
                     .requiresCorrectToolForDrops());
 
     /** Sells goods for credits and never buys them back. */
@@ -33,7 +35,9 @@ public final class EconomyBlocks {
             BlockBehaviour.Properties.of()
                     .mapColor(MapColor.TERRACOTTA_CYAN)
                     .strength(3.5F, 9.0F)
-                    .sound(SoundType.METAL)
+                    .sound(SoundType.WOOD)
+                    // Not a full cube: neighbors must not hide their faces behind it.
+                    .noOcclusion()
                     .requiresCorrectToolForDrops());
 
     private EconomyBlocks() {
