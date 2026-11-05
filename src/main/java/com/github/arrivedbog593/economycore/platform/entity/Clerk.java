@@ -35,7 +35,7 @@ import org.jetbrains.annotations.Nullable;
 
 /**
  * Somebody standing behind a counter: right-click them and they open the
- * exchange or the shop, exactly as the block does.
+ * exchange or the shop, exactly as the block does, or a player's bank.
  * <p>
  * For whoever builds a casino or a market and wants a person at the till
  * rather than a block. Placed like any mob — its spawn egg, or

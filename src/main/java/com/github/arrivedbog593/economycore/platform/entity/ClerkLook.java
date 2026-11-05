@@ -15,9 +15,9 @@ import java.util.List;
  * downloaded by every client from Mojang's servers, which an offline-mode
  * server cannot rely on; a texture inside the jar is there for everybody.
  * <p>
- * Each belongs to one counter, so an exchange clerk dresses like a bank
- * teller and a shop clerk like a shopkeeper, and neither ever turns up in the
- * other's clothes. Adding one is a PNG, a line here and its name in the
+ * Each belongs to one counter, so an exchange clerk dresses like a cashier,
+ * a shop clerk like a shopkeeper and a banker in the bank's green and gold,
+ * and none ever turns up in another's clothes. Adding one is a PNG, a line here and its name in the
  * language files; it joins its counter's draw and cycle on its own.
  * <p>
  * Each is a standard 64×64 player skin in
@@ -33,7 +33,11 @@ public enum ClerkLook {
 
     APRON("apron", false, Counter.SHOP),
     SMOCK("smock", true, Counter.SHOP),
-    MERCHANT("merchant", false, Counter.SHOP);
+    MERCHANT("merchant", false, Counter.SHOP),
+
+    BANKER("banker", false, Counter.BANK),
+    TELLER("teller", false, Counter.BANK),
+    MANAGER("manager", true, Counter.BANK);
 
     private final String id;
     private final boolean slim;

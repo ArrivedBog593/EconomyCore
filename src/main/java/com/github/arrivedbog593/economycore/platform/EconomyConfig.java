@@ -27,6 +27,9 @@ public final class EconomyConfig {
     /** Whether players may open the shop from anywhere with {@code /shop}. */
     public static final ModConfigSpec.BooleanValue SHOP_COMMAND;
 
+    /** Whether players may use their bank from anywhere, with {@code /bank} and {@code /credits deposit}. */
+    public static final ModConfigSpec.BooleanValue BANK_COMMAND;
+
     /** What a player finds in their account the first time they join this world. */
     public static final ModConfigSpec.LongValue WELCOME_BALANCE;
 
@@ -53,6 +56,11 @@ public final class EconomyConfig {
                 .comment("Let players open the shop from wherever they are with /shop.",
                         "Shop blocks and clerks work either way: turn this off to make players go to one.")
                 .define("shopCommand", true);
+        BANK_COMMAND = builder
+                .comment("Let players use their bank from wherever they are, with /bank and with",
+                        "/credits deposit and /credits withdraw. Bankers work either way: turn this off",
+                        "to make players go to one.")
+                .define("bankCommand", true);
         builder.pop();
         builder.push("players");
         WELCOME_BALANCE = builder

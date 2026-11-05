@@ -8,8 +8,9 @@
  * promising credits that are not yet paid ({@link com.github.arrivedbog593.economycore.api.PlayerCommitments}),
  * moving credits all at once, logged and recoverable
  * ({@link com.github.arrivedbog593.economycore.api.Settlement}), the server's own
- * account ({@link com.github.arrivedbog593.economycore.api.Bank}), its own kinds of
- * movement for the log ({@link com.github.arrivedbog593.economycore.api.TransactionType}),
+ * account ({@link com.github.arrivedbog593.economycore.api.Bank}), shares of an
+ * amount rounded to whole credits ({@link com.github.arrivedbog593.economycore.api.CreditMath}),
+ * its own kinds of movement for the log ({@link com.github.arrivedbog593.economycore.api.TransactionType}),
  * staff ranks ({@link com.github.arrivedbog593.economycore.api.Staff}) and how
  * credits are written ({@link com.github.arrivedbog593.economycore.api.CreditFormat}).
  * <p>

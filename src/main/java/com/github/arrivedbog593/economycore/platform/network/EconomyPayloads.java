@@ -7,7 +7,7 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
 /**
- * The economy's network channel: the exchange and the shop.
+ * The economy's network channel: the exchange, the shop and the bank.
  * <p>
  * Versioned on its own, apart from the games, because it will ship apart from
  * them. Bump it whenever one of these payloads changes shape, so an
@@ -16,7 +16,7 @@ import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 @EventBusSubscriber(modid = EconomyCore.MOD_ID)
 public final class EconomyPayloads {
 
-    private static final String VERSION = "1";
+    private static final String VERSION = "2";
 
     private EconomyPayloads() {
     }
@@ -44,6 +44,11 @@ public final class EconomyPayloads {
                 ExchangeRedeemPayload.TYPE,
                 ExchangeRedeemPayload.STREAM_CODEC,
                 ExchangeRedeemPayload::handleOnServer);
+
+        registrar.playToServer(
+                BankActionPayload.TYPE,
+                BankActionPayload.STREAM_CODEC,
+                BankActionPayload::handleOnServer);
 
         registrar.playToServer(
                 ExchangeConvertPayload.TYPE,

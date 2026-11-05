@@ -29,6 +29,7 @@ public final class EconomyClientSetup {
     public static void registerScreens(RegisterMenuScreensEvent event) {
         event.register(EconomyMenus.EXCHANGE.get(), ExchangeScreen::new);
         event.register(EconomyMenus.SHOP.get(), ShopScreen::new);
+        event.register(EconomyMenus.BANK.get(), BankScreen::new);
         event.register(EconomyMenus.ADMIN_SHOP.get(), AdminShopScreen::new);
         event.register(EconomyMenus.ADMIN_EXCHANGE.get(), AdminExchangeScreen::new);
     }
@@ -37,5 +38,6 @@ public final class EconomyClientSetup {
     public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(EconomyEntities.EXCHANGE_CLERK.get(), ClerkRenderer::new);
         event.registerEntityRenderer(EconomyEntities.SHOP_CLERK.get(), ClerkRenderer::new);
+        event.registerEntityRenderer(EconomyEntities.BANKER.get(), ClerkRenderer::new);
     }
 }

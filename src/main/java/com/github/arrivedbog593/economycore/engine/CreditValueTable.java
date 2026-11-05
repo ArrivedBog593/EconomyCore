@@ -1,5 +1,8 @@
 package com.github.arrivedbog593.economycore.engine;
 
+import com.github.arrivedbog593.economycore.api.CreditMath;
+
+import java.math.RoundingMode;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -104,8 +107,7 @@ public final class CreditValueTable {
         if (spreadPercent == NO_SPREAD) {
             return unit;
         }
-        long scaled = Math.multiplyExact(unit, 100L + spreadPercent);
-        return (scaled + 99) / 100;
+        return CreditMath.percentOf(unit, CreditMath.PERCENT + spreadPercent, RoundingMode.CEILING);
     }
 
     /** What a whole stack costs to buy back. */

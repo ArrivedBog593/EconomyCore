@@ -23,6 +23,9 @@ public final class EconomyEntities {
     public static final DeferredHolder<EntityType<?>, EntityType<Clerk>> SHOP_CLERK =
             ENTITIES.register("shop_clerk", () -> clerk("shop_clerk", Counter.SHOP));
 
+    public static final DeferredHolder<EntityType<?>, EntityType<Clerk>> BANKER =
+            ENTITIES.register("banker", () -> clerk("banker", Counter.BANK));
+
     /** A player's size and eye height, since a clerk wears a player's skin. */
     private static EntityType<Clerk> clerk(String id, Counter counter) {
         return EntityType.Builder.<Clerk>of((type, level) -> new Clerk(type, level, counter), MobCategory.MISC)
@@ -44,5 +47,6 @@ public final class EconomyEntities {
     private static void createAttributes(EntityAttributeCreationEvent event) {
         event.put(EXCHANGE_CLERK.get(), Mob.createMobAttributes().build());
         event.put(SHOP_CLERK.get(), Mob.createMobAttributes().build());
+        event.put(BANKER.get(), Mob.createMobAttributes().build());
     }
 }

@@ -10,7 +10,8 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
- * The two places a player does business: the exchange and the shop.
+ * The places a player does business: the exchange, the shop, and the bank
+ * where they keep their savings.
  * <p>
  * Every door opens them through here — the block, its clerk, the command —
  * so the screen a player gets is the same one however they came to it, and
@@ -20,7 +21,9 @@ import net.neoforged.neoforge.network.PacketDistributor;
 public enum Counter {
 
     EXCHANGE("block.economycore.exchange", "economycore.admin.exchange.title"),
-    SHOP("block.economycore.shop", "economycore.admin.shop.title");
+    SHOP("block.economycore.shop", "economycore.admin.shop.title"),
+    /** No block and no settings: a banker or {@code /bank}, and the same screen for staff. */
+    BANK("economycore.my_bank.title", "economycore.my_bank.title");
 
     private final String titleKey;
     private final String adminTitleKey;
@@ -37,6 +40,7 @@ public enum Counter {
                         (containerId, inventory, who) -> switch (this) {
                             case EXCHANGE -> new ExchangeMenu(containerId, inventory, anchor);
                             case SHOP -> new ShopMenu(containerId, inventory, anchor);
+                            case BANK -> new BankMenu(containerId, inventory, anchor);
                         },
                         Component.translatable(titleKey)),
                 buffer -> {
@@ -51,6 +55,11 @@ public enum Counter {
      * customer's screen would read as the key having worked.
      */
     public void administer(ServerPlayer player, ItemStack key, MenuAnchor anchor) {
+        if (this == BANK) {
+            // Nothing to configure: a staff member at the banker is a customer.
+            open(player, anchor);
+            return;
+        }
         if (!AdminKeyItem.mayAdminister(player, key)) {
             player.displayClientMessage(
                     Component.translatable("economycore.admin.key_not_yours"), true);
@@ -61,6 +70,7 @@ public enum Counter {
                         (containerId, inventory, who) -> switch (this) {
                             case EXCHANGE -> new AdminExchangeMenu(containerId, inventory, anchor);
                             case SHOP -> new AdminShopMenu(containerId, inventory, anchor);
+                            case BANK -> throw new IllegalStateException("The bank has no settings");
                         },
                         Component.translatable(adminTitleKey)),
                 buffer -> {
@@ -71,6 +81,9 @@ public enum Counter {
         switch (this) {
             case EXCHANGE -> PacketDistributor.sendToPlayer(player, ExchangeCatalogPayload.current());
             case SHOP -> PacketDistributor.sendToPlayer(player, ShopCatalogPayload.current(player.server));
+            case BANK -> {
+                // No catalog: the menu carries the two balances itself.
+            }
         }
     }
 }

@@ -45,15 +45,21 @@ server chooses which ones it uses.
 
 A staff key opens the settings of any of them: prices, the shop's listings, the surcharge.
 
+Players' banks have two of the three: a **banker**, a third kind of clerk in the bank's
+green and gold, and **`/bank`**. Both open a window with the purse, the bank and buttons to
+move credits between them. Switching `/bank` off in the config also closes
+`/credits deposit` and `/credits withdraw`, so players have to go to a banker.
+
 ## Commands
 
 | Command                          | Who                             | What it does                                   |
 |----------------------------------|---------------------------------|------------------------------------------------|
 | `/exchange`, `/shop`             | everyone, unless switched off   | Open the exchange or the shop                  |
+| `/bank`                          | everyone, unless switched off   | Open your bank                                 |
 | `/credits`                       | everyone                        | Your purse and your savings                    |
 | `/credits pay <player> <amount>` | everyone                        | Send credits to another player                 |
-| `/credits deposit <amount>`      | everyone                        | Put credits away in savings; `all` for all     |
-| `/credits withdraw <amount>`     | everyone                        | Take credits out of savings; `all` for all     |
+| `/credits deposit <amount>`      | everyone, unless switched off   | Put credits away in savings; `all` for all     |
+| `/credits withdraw <amount>`     | everyone, unless switched off   | Take credits out of savings; `all` for all     |
 | `/credits balance <player>`      | staff administrators, operators | Anybody's balance, online or not               |
 | `/credits give / take / set`     | staff administrators, operators | Change a balance                               |
 | `/economycore help`              | everyone                        | Every command you can use, with a line on each |
@@ -72,6 +78,7 @@ for that world.
 |--------------------------|---------|---------------------------------------------------------------------|
 | `access.exchangeCommand` | `true`  | Let players open the exchange with `/exchange`                      |
 | `access.shopCommand`     | `true`  | Let players open the shop with `/shop`                              |
+| `access.bankCommand`     | `true`  | Let players use their bank from anywhere, with `/bank` and `/credits deposit` and `withdraw` |
 | `bank.alwaysOn`          | `false` | Keep the server bank on even when no mod asks for it                |
 | `bank.incomeToBank`      | `true`  | Pay what the server takes in into the bank, rather than removing it |
 | `players.welcomeBalance` | `0`     | Credits a player starts with the first time they join the world     |

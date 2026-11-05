@@ -2,6 +2,7 @@ package com.github.arrivedbog593.economycore.platform;
 
 import com.github.arrivedbog593.economycore.EconomyCore;
 import com.github.arrivedbog593.economycore.api.CreditFormat;
+import com.github.arrivedbog593.economycore.api.CreditMath;
 import com.github.arrivedbog593.economycore.api.TransactionType;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -10,6 +11,8 @@ import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
+
+import java.math.RoundingMode;
 
 /**
  * Takes a share of a player's purse when they die, if the server asks for
@@ -20,8 +23,9 @@ import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
  * has not settled; taking them would leave the round unable to pay, and it
  * would be handed back as if it had never happened.
  * <p>
- * Rounded down, so a player never loses a credit more than the share says,
- * and a purse too small for the share to reach a whole credit loses nothing.
+ * What the player keeps is rounded to the nearest credit, halves up: with
+ * half of 15 to lose, they keep 8 and lose 7. Rounding what is kept rather
+ * than what is lost is what puts a half in the player's favor.
  * <p>
  * What is lost is the server's income, like the shop's sales: into the bank
  * while it takes income, out of circulation otherwise. Not recoverable: a
@@ -65,9 +69,9 @@ public final class DeathLoss {
         player.sendSystemMessage(Component.translatable("economycore.death_loss", CreditFormat.of(lost)));
     }
 
-    /** The share of a free purse that dying costs, rounded down to whole credits. */
+    /** The share of a free purse that dying costs: whatever is not kept, the kept part rounded half up. */
     static long lossFrom(long free, int percent) {
-        // Never overflows: a purse is capped at 10^12, and a share at 100.
-        return free * percent / 100;
+        long kept = CreditMath.percentOf(free, CreditMath.PERCENT - percent, RoundingMode.HALF_UP);
+        return free - kept;
     }
 }

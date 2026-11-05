@@ -50,15 +50,22 @@ jugador. Cada servidor elige cuáles usa.
 Una llave de staff abre la configuración de cualquiera de ellos: precios, lo que vende la
 tienda, el recargo.
 
+El banco de los jugadores tiene dos de las tres: un **banquero**, un tercer tipo de
+empleado con el verde y dorado del banco, y **`/bank`**. Los dos abren una ventana con el
+monedero, el banco y botones para mover créditos entre ellos. Apagar `/bank` en la
+configuración también cierra `/credits deposit` y `/credits withdraw`, para que los
+jugadores tengan que ir a un banquero.
+
 ## Comandos
 
 | Comando | Quién | Qué hace |
 |---|---|---|
 | `/exchange`, `/shop` | todos, salvo que estén apagados | Abre la casa de cambio o la tienda |
+| `/bank` | todos, salvo que esté apagado | Abre tu banco |
 | `/credits` | todos | Tu monedero y tu banco |
 | `/credits pay <jugador> <cantidad>` | todos | Envía créditos a otro jugador |
-| `/credits deposit <cantidad>` | todos | Guarda créditos del monedero en el banco; `all` para todo |
-| `/credits withdraw <cantidad>` | todos | Saca créditos del banco al monedero; `all` para todo |
+| `/credits deposit <cantidad>` | todos, salvo que esté apagado | Guarda créditos del monedero en el banco; `all` para todo |
+| `/credits withdraw <cantidad>` | todos, salvo que esté apagado | Saca créditos del banco al monedero; `all` para todo |
 | `/credits balance <jugador>` | administradores del staff, operadores | El saldo de cualquiera, conectado o no |
 | `/credits give / take / set` | administradores del staff, operadores | Cambia un saldo |
 | `/economycore help` | todos | Todos los comandos que puedes usar, con una línea sobre cada uno |
@@ -77,6 +84,7 @@ reemplaza para ese mundo.
 |---|---|---|
 | `access.exchangeCommand` | `true` | Deja que los jugadores abran la casa de cambio con `/exchange` |
 | `access.shopCommand` | `true` | Deja que los jugadores abran la tienda con `/shop` |
+| `access.bankCommand` | `true` | Deja que los jugadores usen su banco desde cualquier sitio, con `/bank` y con `/credits deposit` y `withdraw` |
 | `bank.alwaysOn` | `false` | Mantiene el banco del servidor encendido aunque ningún mod lo pida |
 | `bank.incomeToBank` | `true` | Mete al banco lo que cobra el servidor, en vez de retirarlo |
 | `players.welcomeBalance` | `0` | Créditos con los que empieza un jugador la primera vez que entra al mundo |

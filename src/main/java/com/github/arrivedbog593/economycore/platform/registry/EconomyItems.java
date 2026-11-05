@@ -33,6 +33,10 @@ public final class EconomyItems {
             ITEMS.register("shop_clerk_spawn_egg", () -> new DeferredSpawnEggItem(
                     EconomyEntities.SHOP_CLERK, 0x3C8D4F, 0xE8E0C8, new Item.Properties()));
 
+    public static final DeferredItem<DeferredSpawnEggItem> BANKER_SPAWN_EGG =
+            ITEMS.register("banker_spawn_egg", () -> new DeferredSpawnEggItem(
+                    EconomyEntities.BANKER, 0x1F4D2B, 0xD4AF37, new Item.Properties()));
+
     /**
      * Opens a casino block's settings instead of using it.
      * <p>

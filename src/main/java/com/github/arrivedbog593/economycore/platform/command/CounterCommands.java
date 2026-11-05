@@ -12,8 +12,8 @@ import net.neoforged.fml.event.config.ModConfigEvent;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
 /**
- * {@code /exchange} and {@code /shop}: the counters, opened from wherever the
- * player is standing.
+ * {@code /exchange}, {@code /shop} and {@code /bank}: the counters, opened from
+ * wherever the player is standing.
  * <p>
  * One of three doors, with the block and its clerk. Each server decides in
  * its config whether this one is open; a server that wants players to walk
@@ -32,6 +32,11 @@ public final class CounterCommands {
         dispatcher.register(Commands.literal("shop")
                 .requires(source -> mayOpen(source, Counter.SHOP))
                 .executes(context -> open(context.getSource(), Counter.SHOP)));
+        // A player's own bank, not the server's: that one is staff work, under
+        // /economycore bank.
+        dispatcher.register(Commands.literal("bank")
+                .requires(source -> mayOpen(source, Counter.BANK))
+                .executes(context -> open(context.getSource(), Counter.BANK)));
     }
 
     /**
@@ -48,6 +53,7 @@ public final class CounterCommands {
         return switch (counter) {
             case EXCHANGE -> EconomyConfig.EXCHANGE_COMMAND.get();
             case SHOP -> EconomyConfig.SHOP_COMMAND.get();
+            case BANK -> EconomyConfig.BANK_COMMAND.get();
         };
     }
 
