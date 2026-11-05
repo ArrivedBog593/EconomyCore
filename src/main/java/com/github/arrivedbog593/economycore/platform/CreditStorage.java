@@ -90,6 +90,15 @@ public final class CreditStorage extends SavedData {
         return accounts.computeIfAbsent(playerId, CreditAccount::empty);
     }
 
+    /**
+     * Whether the economy has ever touched this player's account here: a
+     * deposit, a withdrawal or a transfer, even one that failed, since trying
+     * opens the account.
+     */
+    public boolean hasAccount(UUID playerId) {
+        return accounts.containsKey(playerId);
+    }
+
     public long balanceOf(UUID playerId) {
         CreditAccount account = accounts.get(playerId);
         return account == null ? 0 : account.balance();

@@ -69,6 +69,7 @@ for that world.
 | `access.shopCommand`     | `true`  | Let players open the shop with `/shop`                              |
 | `bank.alwaysOn`          | `false` | Keep the server bank on even when no mod asks for it                |
 | `bank.incomeToBank`      | `true`  | Pay what the server takes in into the bank, rather than removing it |
+| `players.welcomeBalance` | `0`     | Credits a player starts with the first time they join the world     |
 
 ## The server bank and the server's income
 

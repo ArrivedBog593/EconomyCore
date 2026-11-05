@@ -74,6 +74,7 @@ reemplaza para ese mundo.
 | `access.shopCommand` | `true` | Deja que los jugadores abran la tienda con `/shop` |
 | `bank.alwaysOn` | `false` | Mantiene el banco del servidor encendido aunque ningún mod lo pida |
 | `bank.incomeToBank` | `true` | Mete al banco lo que cobra el servidor, en vez de retirarlo |
+| `players.welcomeBalance` | `0` | Créditos con los que empieza un jugador la primera vez que entra al mundo |
 
 ## El banco del servidor y lo que cobra el servidor
 

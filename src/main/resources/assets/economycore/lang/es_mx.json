@@ -30,6 +30,7 @@
   "economycore.staff.moderator_to_you": "Ahora eres moderador: puedes configurar la tienda y la casa de cambio. Haz clic derecho en ellas con la llave.",
   "economycore.staff.admin_to_you": "Ahora eres administrador: puedes configurar la tienda y la casa de cambio, manejar el banco del servidor con /economycore bank y los saldos de los jugadores con /credits give, take y set, y lo que otros mods confíen a los administradores. Haz clic derecho con la llave.",
   "economycore.staff.removed_from_you": "Ya no formas parte del staff.",
+  "economycore.welcome": "¡Te damos la bienvenida! Empiezas con %s créditos.",
 
   "economycore.admin.shop.title": "Ajustes de la tienda",
   "economycore.admin.shop.price": "Precio",

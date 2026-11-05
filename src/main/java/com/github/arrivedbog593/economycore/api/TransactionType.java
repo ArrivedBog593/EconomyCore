@@ -59,6 +59,12 @@ public final class TransactionType {
      */
     public static final TransactionType SPREAD = register("spread", false);
 
+    /**
+     * What a player is given the first time they join a world. No items
+     * involved, so it is safe to replay.
+     */
+    public static final TransactionType WELCOME = register("welcome", true);
+
     private final String code;
     private final boolean recoverable;
 

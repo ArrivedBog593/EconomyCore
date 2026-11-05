@@ -1,5 +1,6 @@
 package com.github.arrivedbog593.economycore.platform;
 
+import com.github.arrivedbog593.economycore.engine.CreditAccount;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 /**
@@ -26,6 +27,9 @@ public final class EconomyConfig {
     /** Whether players may open the shop from anywhere with {@code /shop}. */
     public static final ModConfigSpec.BooleanValue SHOP_COMMAND;
 
+    /** What a player finds in their account the first time they join this world. */
+    public static final ModConfigSpec.LongValue WELCOME_BALANCE;
+
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
         builder.push("bank");
@@ -49,6 +53,13 @@ public final class EconomyConfig {
                 .comment("Let players open the shop from wherever they are with /shop.",
                         "Shop blocks and clerks work either way: turn this off to make players go to one.")
                 .define("shopCommand", true);
+        builder.pop();
+        builder.push("players");
+        WELCOME_BALANCE = builder
+                .comment("Credits paid into a player's account the first time they join this world,",
+                        "to start them off. 0 gives nothing. Players who had already joined are not paid",
+                        "when it is set or raised.")
+                .defineInRange("welcomeBalance", 0L, 0L, CreditAccount.MAX_BALANCE);
         builder.pop();
         SPEC = builder.build();
     }

@@ -30,6 +30,7 @@
   "economycore.staff.moderator_to_you": "You are now a moderator: you can configure the shop and the exchange. Right click them with the key.",
   "economycore.staff.admin_to_you": "You are now an administrator: you can configure the shop and the exchange, run the server bank with /economycore bank and players' balances with /credits give, take and set, and whatever other mods entrust to administrators. Right click with the key.",
   "economycore.staff.removed_from_you": "You are no longer on the staff.",
+  "economycore.welcome": "Welcome! You start with %s credits.",
 
   "economycore.admin.shop.title": "Shop Settings",
   "economycore.admin.shop.price": "Price",
