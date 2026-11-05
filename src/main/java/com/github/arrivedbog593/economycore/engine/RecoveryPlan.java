@@ -1,10 +1,14 @@
 package com.github.arrivedbog593.economycore.engine;
 
+import com.github.arrivedbog593.economycore.api.Pocket;
+
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -30,8 +34,12 @@ import java.util.UUID;
  * Idempotent in practice because the sequence number is saved in the same
  * file as the balances. If the process dies again before saving, both revert
  * together and the same lines are replayed onto the same starting point.
+ *
+ * @param deltas        what to add to each purse
+ * @param savingsDeltas what to add to each player's savings
  */
 public record RecoveryPlan(Map<UUID, Long> deltas,
+                           Map<UUID, Long> savingsDeltas,
                            long highestSequence,
                            int consideredCount,
                            int appliedCount,
@@ -39,20 +47,28 @@ public record RecoveryPlan(Map<UUID, Long> deltas,
 
     public RecoveryPlan {
         deltas = Map.copyOf(Objects.requireNonNull(deltas, "deltas"));
+        savingsDeltas = Map.copyOf(Objects.requireNonNull(savingsDeltas, "savingsDeltas"));
     }
 
     /** Nothing to restore. */
     public static RecoveryPlan empty(long highestSequence) {
-        return new RecoveryPlan(Map.of(), highestSequence, 0, 0, 0);
+        return new RecoveryPlan(Map.of(), Map.of(), highestSequence, 0, 0, 0);
     }
 
     public boolean isEmpty() {
-        return deltas.isEmpty();
+        return deltas.isEmpty() && savingsDeltas.isEmpty();
     }
 
-    /** How many accounts would move. */
+    /** What to add to one pocket of each account. */
+    public Map<UUID, Long> deltas(Pocket pocket) {
+        return pocket == Pocket.SAVINGS ? savingsDeltas : deltas;
+    }
+
+    /** How many accounts would move, counting a player once even if both their pockets do. */
     public int affectedCount() {
-        return deltas.size();
+        Set<UUID> owners = new HashSet<>(deltas.keySet());
+        owners.addAll(savingsDeltas.keySet());
+        return owners.size();
     }
 
     /**
@@ -80,6 +96,7 @@ public record RecoveryPlan(Map<UUID, Long> deltas,
         }
 
         Map<UUID, Long> deltas = new LinkedHashMap<>();
+        Map<UUID, Long> savingsDeltas = new LinkedHashMap<>();
         int applied = 0;
         int discarded = 0;
 
@@ -95,14 +112,17 @@ public record RecoveryPlan(Map<UUID, Long> deltas,
             }
             applied++;
             // Every account the same way, a player's or one a mod keeps for
-            // itself: an account is an id and a balance.
-            deltas.merge(record.owner(), record.delta(), Long::sum);
+            // itself: an account is an id and a balance. Each pocket on its
+            // own, since each has its own balance to restore.
+            Map<UUID, Long> pocket = record.pocket() == Pocket.SAVINGS ? savingsDeltas : deltas;
+            pocket.merge(record.owner(), record.delta(), Long::sum);
         }
 
         // An account whose only movements canceled out needs no restoring.
         deltas.entrySet().removeIf(entry -> entry.getValue() == 0);
+        savingsDeltas.entrySet().removeIf(entry -> entry.getValue() == 0);
 
-        return new RecoveryPlan(deltas, highest,
+        return new RecoveryPlan(deltas, savingsDeltas, highest,
                 pending.size(), applied, discarded);
     }
 }

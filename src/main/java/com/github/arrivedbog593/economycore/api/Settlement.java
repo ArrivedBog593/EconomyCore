@@ -28,21 +28,40 @@ import java.util.UUID;
  *         .move(winner, 100, MyTypes.PAYOUT)
  *         .apply(server, "table at 10, 64, -3");
  * }</pre>
+ * A movement names a {@link Pocket}; one that names none is the purse, which
+ * is what anything that spends or pays a player should use. Savings are moved
+ * by naming them: an auction paying a seller who is away, say, or a deposit,
+ * which is the same player's purse paying their own savings:
+ * <pre>{@code
+ * Settlement.create()
+ *         .move(player, Pocket.PURSE, -500, TransactionType.SAVINGS_DEPOSIT)
+ *         .move(player, Pocket.SAVINGS, 500, TransactionType.SAVINGS_DEPOSIT)
+ *         .apply(server, "deposit");
+ * }</pre>
  * Takings are made before payments, so a winner is never paid from credits a
  * loser turns out not to have. {@link Bank#ACCOUNT} is an account like any
- * other here, except that a payment into the bank is never refused: what would
- * take it past the balance cap is not kept.
+ * other here, except that it has no savings, and a payment into the bank is
+ * never refused: what would take it past the balance cap is not kept.
  * <p>
  * Server thread only.
  */
 public final class Settlement {
 
-    /** One account's change: positive is paid in, negative taken out. */
-    public record Movement(UUID account, long delta, TransactionType type) {
+    /** One pocket's change: positive is paid in, negative taken out. */
+    public record Movement(UUID account, Pocket pocket, long delta, TransactionType type) {
 
         public Movement {
             Objects.requireNonNull(account, "account");
+            Objects.requireNonNull(pocket, "pocket");
             Objects.requireNonNull(type, "type");
+            if (pocket == Pocket.SAVINGS && account.equals(Bank.ACCOUNT)) {
+                throw new IllegalArgumentException("The server bank has no savings");
+            }
+        }
+
+        /** A movement of a purse. */
+        public Movement(UUID account, long delta, TransactionType type) {
+            this(account, Pocket.PURSE, delta, type);
         }
     }
 
@@ -60,14 +79,19 @@ public final class Settlement {
      * @param refusal   why nothing moved, or null when everything did
      * @param account   the account that stopped it, or null
      * @param shortfall how much it was short of covering, for {@link Refusal#CANNOT_COVER}
+     * @param pocket    which of that account's pockets stopped it, or null
      */
-    public record Result(Refusal refusal, UUID account, long shortfall) {
+    public record Result(Refusal refusal, UUID account, long shortfall, Pocket pocket) {
 
-        private static final Result APPLIED = new Result(null, null, 0);
+        private static final Result APPLIED = new Result(null, null, 0, null);
 
         public boolean applied() {
             return refusal == null;
         }
+    }
+
+    /** One pocket of one account: what is checked and moved as a unit. */
+    private record Holding(UUID account, Pocket pocket) {
     }
 
     private final List<Movement> movements = new ArrayList<>();
@@ -79,10 +103,19 @@ public final class Settlement {
         return new Settlement();
     }
 
-    /** Adds a movement. A zero one is left out: nothing moves, and nothing is logged. */
+    /** Adds a movement of a purse. A zero one is left out: nothing moves, and nothing is logged. */
     public Settlement move(UUID account, long delta, TransactionType type) {
+        return move(account, Pocket.PURSE, delta, type);
+    }
+
+    /**
+     * Adds a movement of either pocket. A zero one is left out.
+     *
+     * @throws IllegalArgumentException for the savings of {@link Bank#ACCOUNT}, which has none
+     */
+    public Settlement move(UUID account, Pocket pocket, long delta, TransactionType type) {
         if (delta != 0) {
-            movements.add(new Movement(account, delta, type));
+            movements.add(new Movement(account, pocket, delta, type));
         }
         return this;
     }
@@ -99,21 +132,21 @@ public final class Settlement {
     public Result apply(MinecraftServer server, String detail) {
         CreditStorage storage = CreditStorage.get(server);
 
-        // Checked by account rather than by movement, so that two takings
-        // from one account are judged against its balance together.
-        Map<UUID, Long> net = new LinkedHashMap<>();
+        // Checked by pocket rather than by movement, so that two takings
+        // from one purse are judged against its balance together.
+        Map<Holding, Long> net = new LinkedHashMap<>();
         for (Movement movement : movements) {
-            net.merge(movement.account(), movement.delta(), Math::addExact);
+            net.merge(new Holding(movement.account(), movement.pocket()), movement.delta(), Math::addExact);
         }
-        for (Map.Entry<UUID, Long> entry : net.entrySet()) {
-            UUID account = entry.getKey();
+        for (Map.Entry<Holding, Long> entry : net.entrySet()) {
+            Holding holding = entry.getKey();
             long change = entry.getValue();
-            long balance = storage.balanceOf(account);
+            long balance = storage.balanceOf(holding.account(), holding.pocket());
             if (change < 0 && balance < -change) {
-                return new Result(Refusal.CANNOT_COVER, account, -change - balance);
+                return new Result(Refusal.CANNOT_COVER, holding.account(), -change - balance, holding.pocket());
             }
-            if (change > 0 && !account.equals(Bank.ACCOUNT) && !CreditAccount.canHold(balance, change)) {
-                return new Result(Refusal.BALANCE_CAP, account, 0);
+            if (change > 0 && !holding.account().equals(Bank.ACCOUNT) && !CreditAccount.canHold(balance, change)) {
+                return new Result(Refusal.BALANCE_CAP, holding.account(), 0, holding.pocket());
             }
         }
 
@@ -124,11 +157,11 @@ public final class Settlement {
             if (movement.delta() >= 0) {
                 continue;
             }
-            if (!storage.withdraw(movement.account(), -movement.delta())) {
+            if (!storage.withdraw(movement.account(), movement.pocket(), -movement.delta())) {
                 for (Movement undo : taken) {
-                    storage.deposit(undo.account(), -undo.delta());
+                    storage.deposit(undo.account(), undo.pocket(), -undo.delta());
                 }
-                return new Result(Refusal.CANNOT_COVER, movement.account(), 0);
+                return new Result(Refusal.CANNOT_COVER, movement.account(), 0, movement.pocket());
             }
             taken.add(movement);
         }
@@ -139,14 +172,14 @@ public final class Settlement {
             if (movement.account().equals(Bank.ACCOUNT)) {
                 ServerBank.credit(storage, movement.delta());
             } else {
-                storage.deposit(movement.account(), movement.delta());
+                storage.deposit(movement.account(), movement.pocket(), movement.delta());
             }
         }
 
         // Everything has moved. Only now does any of it reach the log.
         for (Movement movement : movements) {
-            EconomyEvents.record(storage, movement.type(), movement.account(), movement.delta(),
-                    storage.balanceOf(movement.account()), detail);
+            EconomyEvents.record(storage, movement.type(), movement.account(), movement.pocket(),
+                    movement.delta(), storage.balanceOf(movement.account(), movement.pocket()), detail);
         }
         return Result.APPLIED;
     }

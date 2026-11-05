@@ -13,8 +13,9 @@ bazares.
 
 ## Qué añade
 
-- **Cuentas personales en créditos** para cada jugador, guardadas con el mundo. Cada
-  movimiento queda en un registro, y lo que un crash dejó a medias se repone al arrancar.
+- **Cuentas personales en créditos** para cada jugador, guardadas con el mundo, en dos
+  bolsillos: un monedero para gastar y un banco donde guardar a salvo. Cada movimiento queda
+  en un registro, y lo que un crash dejó a medias se repone al arrancar.
 - **La casa de cambio**: entrega cualquier objeto a cambio de créditos y recómpralo
   después, a los precios que el servidor fija dentro del juego. Los objetos de cualquier mod
   pueden ser moneda, o simples lingotes de vanilla. Un recargo de recompra opcional evita
@@ -53,8 +54,10 @@ tienda, el recargo.
 | Comando | Quién | Qué hace |
 |---|---|---|
 | `/exchange`, `/shop` | todos, salvo que estén apagados | Abre la casa de cambio o la tienda |
-| `/credits` | todos | Tu saldo |
+| `/credits` | todos | Tu monedero y tu banco |
 | `/credits pay <jugador> <cantidad>` | todos | Envía créditos a otro jugador |
+| `/credits deposit <cantidad>` | todos | Guarda créditos del monedero en el banco; `all` para todo |
+| `/credits withdraw <cantidad>` | todos | Saca créditos del banco al monedero; `all` para todo |
 | `/credits balance <jugador>` | administradores del staff, operadores | El saldo de cualquiera, conectado o no |
 | `/credits give / take / set` | administradores del staff, operadores | Cambia un saldo |
 | `/economycore help` | todos | Todos los comandos que puedes usar, con una línea sobre cada uno |

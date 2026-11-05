@@ -1,5 +1,6 @@
 package com.github.arrivedbog593.economycore.platform;
 
+import com.github.arrivedbog593.economycore.api.Pocket;
 import com.github.arrivedbog593.economycore.api.TransactionType;
 import com.github.arrivedbog593.economycore.engine.TransactionRecord;
 import com.mojang.logging.LogUtils;
@@ -156,9 +157,15 @@ public final class TransactionLog {
      * dies is a line that cannot help recover from that death.
      */
     public long record(TransactionType type, UUID owner, long delta, long balance, String detail) {
+        return record(type, owner, Pocket.PURSE, delta, balance, detail);
+    }
+
+    /** Records one movement of a given pocket, and returns its sequence number. */
+    public long record(TransactionType type, UUID owner, Pocket pocket, long delta, long balance,
+                       String detail) {
         long assigned = ++sequence;
         TransactionRecord entry = new TransactionRecord(
-                assigned, Instant.now().toString(), type, owner, delta, balance, detail);
+                assigned, Instant.now().toString(), type, owner, delta, balance, detail, pocket);
         write(entry.toLine());
         return assigned;
     }

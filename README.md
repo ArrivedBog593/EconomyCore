@@ -12,8 +12,9 @@ and a base other mods can build on: casinos, auction houses, bazaars.
 
 ## What it adds
 
-- **Personal accounts in credits** for every player, saved with the world. Every movement
-  is written to a log, and whatever a crash interrupted is put back when the server starts.
+- **Personal accounts in credits** for every player, saved with the world, in two pockets: a
+  purse to spend from, and savings put away out of reach. Every movement is written to a
+  log, and whatever a crash interrupted is put back when the server starts.
 - **The Exchange**: hand any item in for credits and buy it back later, at prices the
   server sets in game. Any mod's items can be currency, or plain vanilla ingots. An optional
   buyback surcharge keeps players from using it as free storage.
@@ -48,8 +49,10 @@ A staff key opens the settings of any of them: prices, the shop's listings, the 
 | Command                          | Who                             | What it does                                   |
 |----------------------------------|---------------------------------|------------------------------------------------|
 | `/exchange`, `/shop`             | everyone, unless switched off   | Open the exchange or the shop                  |
-| `/credits`                       | everyone                        | Your balance                                   |
+| `/credits`                       | everyone                        | Your purse and your savings                    |
 | `/credits pay <player> <amount>` | everyone                        | Send credits to another player                 |
+| `/credits deposit <amount>`      | everyone                        | Put credits away in savings; `all` for all     |
+| `/credits withdraw <amount>`     | everyone                        | Take credits out of savings; `all` for all     |
 | `/credits balance <player>`      | staff administrators, operators | Anybody's balance, online or not               |
 | `/credits give / take / set`     | staff administrators, operators | Change a balance                               |
 | `/economycore help`              | everyone                        | Every command you can use, with a line on each |

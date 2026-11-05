@@ -1,5 +1,6 @@
 package com.github.arrivedbog593.economycore.engine;
 
+import com.github.arrivedbog593.economycore.api.Pocket;
 import com.github.arrivedbog593.economycore.api.TransactionType;
 import org.junit.jupiter.api.Test;
 
@@ -187,6 +188,58 @@ class RecoveryPlanTest {
         UUID bank = new UUID(0L, 0L);
         RecoveryPlan plan = RecoveryPlan.build(10, List.of(
                 entry(11, TransactionType.SHOP_PURCHASE, bank, 500, 5500)));
+
+        assertTrue(plan.isEmpty());
+    }
+
+    // --- Purse and savings ---------------------------------------------------------
+
+    @Test
+    void aSavingsLineSurvivesWritingAndReading() {
+        TransactionRecord original = new TransactionRecord(
+                42, "2026-11-04T12:00:00Z", TransactionType.SAVINGS_DEPOSIT,
+                ALICE, 500, 500, "savings_deposit", Pocket.SAVINGS);
+
+        assertEquals(8, original.toLine().split("\t", -1).length);
+        assertEquals(original, TransactionRecord.parse(original.toLine()).orElseThrow());
+    }
+
+    @Test
+    void aPurseLineKeepsTheSevenFieldsOlderLogsHave() {
+        // So a log from before savings reads as all purse, and a version from
+        // before savings still reads every purse line of a newer log.
+        TransactionRecord purse = entry(1, BET, ALICE, -10, 90);
+        assertEquals(7, purse.toLine().split("\t", -1).length);
+        assertEquals(Pocket.PURSE, TransactionRecord.parse(
+                "1\tt\tbet\t" + ALICE + "\t-10\t90\t").orElseThrow().pocket());
+    }
+
+    @Test
+    void aLineNamingNoKnownPocketIsIgnored() {
+        assertTrue(TransactionRecord.parse("1\tt\tbet\t" + ALICE + "\t-10\t90\t\twallet").isEmpty());
+    }
+
+    @Test
+    void eachPocketIsRestoredOnItsOwn() {
+        // A deposit is two lines for one player: the purse down, savings up.
+        // Summed together they would cancel out and restore nothing.
+        RecoveryPlan plan = RecoveryPlan.build(10, List.of(
+                entry(11, PAYOUT, ALICE, 1000, 1000),
+                new TransactionRecord(12, "t", TransactionType.SAVINGS_DEPOSIT,
+                        ALICE, -600, 400, "", Pocket.PURSE),
+                new TransactionRecord(13, "t", TransactionType.SAVINGS_DEPOSIT,
+                        ALICE, 600, 600, "", Pocket.SAVINGS)));
+
+        assertEquals(400, plan.deltas(Pocket.PURSE).get(ALICE));
+        assertEquals(600, plan.deltas(Pocket.SAVINGS).get(ALICE));
+        assertEquals(1, plan.affectedCount(), "one player, however many pockets");
+    }
+
+    @Test
+    void savingsAreDroppedLikeAnyOtherMovementOfItems() {
+        TransactionType bought = TransactionType.SHOP_PURCHASE;
+        RecoveryPlan plan = RecoveryPlan.build(10, List.of(
+                new TransactionRecord(11, "t", bought, ALICE, -50, 0, "", Pocket.SAVINGS)));
 
         assertTrue(plan.isEmpty());
     }

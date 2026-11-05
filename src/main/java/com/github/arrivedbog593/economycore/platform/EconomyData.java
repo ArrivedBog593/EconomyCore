@@ -44,6 +44,19 @@ public final class EconomyData extends SavedData {
     private static final String DATA_NAME = "economycore_data";
     private static final Logger LOGGER = LogUtils.getLogger();
 
+    /**
+     * The shape of the file this version writes, raised whenever that shape
+     * changes. Older shapes are read where the data they hold is read, and
+     * stay readable for good.
+     * <ol start="0">
+     *   <li>No version written. The shop may still be in its first format, item
+     *       ids against prices, which {@link #readShop} brings forward.</li>
+     *   <li>The version is written, and nothing else changed.</li>
+     * </ol>
+     */
+    static final int DATA_VERSION = 1;
+
+    private static final String KEY_DATA_VERSION = "data_version";
     private static final String KEY_CONVERSIONS = "conversions";
     private static final String KEY_SHOP = "shop";
 
@@ -84,6 +97,13 @@ public final class EconomyData extends SavedData {
     }
 
     private static EconomyData load(CompoundTag tag, HolderLookup.Provider registries) {
+        int version = tag.getInt(KEY_DATA_VERSION);
+        if (version > DATA_VERSION) {
+            LOGGER.error("[Economy] {}.dat was written by a newer version of EconomyCore "
+                            + "(data version {}, this one knows up to {}). What this version does "
+                            + "not understand will be lost when the world saves.",
+                    DATA_NAME, version, DATA_VERSION);
+        }
         EconomyData data = new EconomyData();
         readInto(tag.getCompound(KEY_CONVERSIONS), data.conversions);
         readShop(tag, data, registries);
@@ -114,6 +134,7 @@ public final class EconomyData extends SavedData {
 
     @Override
     public @NotNull CompoundTag save(CompoundTag tag, HolderLookup.@NotNull Provider registries) {
+        tag.putInt(KEY_DATA_VERSION, DATA_VERSION);
         tag.put(KEY_CONVERSIONS, writeFrom(conversions));
         writeShop(tag, registries);
         tag.putInt(KEY_SPREAD_PERCENT, spreadPercent);

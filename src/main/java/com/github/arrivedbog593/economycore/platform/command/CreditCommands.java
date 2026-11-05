@@ -1,6 +1,8 @@
 package com.github.arrivedbog593.economycore.platform.command;
 
 import com.github.arrivedbog593.economycore.api.CreditFormat;
+import com.github.arrivedbog593.economycore.api.Pocket;
+import com.github.arrivedbog593.economycore.api.Settlement;
 import com.github.arrivedbog593.economycore.api.TransactionType;
 import com.github.arrivedbog593.economycore.engine.CreditAccount;
 import com.github.arrivedbog593.economycore.platform.Commitments;
@@ -21,8 +23,12 @@ import net.minecraft.server.level.ServerPlayer;
 import java.util.Collection;
 
 /**
- * {@code /credits}: a balance, a payment between players, and staff moving
- * money that is not their own.
+ * {@code /credits}: a balance, a payment between players, putting credits
+ * away in savings and taking them back out, and staff moving money that is
+ * not their own.
+ * <p>
+ * Everything here but the savings commands works on the purse, the pocket
+ * players spend from.
  * <p>
  * Items are not traded here. {@code /credits convert} and
  * {@code /credits redeem} came first, to try the economy out before there
@@ -35,6 +41,9 @@ import java.util.Collection;
  * the log, so the saved sequence advances with every movement.
  */
 public final class CreditCommands {
+
+    /** Stands for "everything there is" in {@code deposit all} and {@code withdraw all}. */
+    private static final long ALL = -1;
 
     private CreditCommands() {
     }
@@ -65,6 +74,23 @@ public final class CreditCommands {
                                         context.getSource(),
                                         EntityArgument.getPlayer(context, "target"),
                                         LongArgumentType.getLong(context, "amount"))))));
+
+        // Between a player's own pockets. Open to everyone and from anywhere
+        // for now; a banker to go to can come later, the way the exchange and
+        // the shop have their clerks.
+        root.then(Commands.literal("deposit")
+                .then(Commands.literal("all")
+                        .executes(context -> deposit(context.getSource(), ALL)))
+                .then(Commands.argument("amount", LongArgumentType.longArg(1, CreditAccount.MAX_BALANCE))
+                        .executes(context -> deposit(context.getSource(),
+                                LongArgumentType.getLong(context, "amount")))));
+
+        root.then(Commands.literal("withdraw")
+                .then(Commands.literal("all")
+                        .executes(context -> withdraw(context.getSource(), ALL)))
+                .then(Commands.argument("amount", LongArgumentType.longArg(1, CreditAccount.MAX_BALANCE))
+                        .executes(context -> withdraw(context.getSource(),
+                                LongArgumentType.getLong(context, "amount")))));
 
         // Moving money that is not your own: operators and staff administrators.
         root.then(Commands.literal("give")
@@ -102,28 +128,102 @@ public final class CreditCommands {
 
     private static int showBalance(CommandSourceStack source) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        long balance = CreditStorage.get(source.getServer()).balanceOf(player.getUUID());
-        source.sendSuccess(() -> Component.translatable(
-                "economycore.command.credits.balance", balance), false);
+        CreditStorage storage = CreditStorage.get(source.getServer());
+        long balance = storage.balanceOf(player.getUUID());
+        long saved = storage.balanceOf(player.getUUID(), Pocket.SAVINGS);
+        source.sendSuccess(() -> Component.translatable("economycore.command.credits.balance",
+                CreditFormat.of(balance), CreditFormat.of(saved)), false);
         return (int) Math.min(Integer.MAX_VALUE, balance);
     }
 
     /**
      * Other players' balances, for staff, with what each has set aside at a
-     * game table or in a bid: that part is in the balance but cannot be spent or taken.
+     * game table or in a bid: that part is in the purse but cannot be spent or taken.
      */
     private static int showBalanceOf(CommandSourceStack source, Collection<GameProfile> profiles) {
         CreditStorage storage = CreditStorage.get(source.getServer());
         for (GameProfile profile : profiles) {
             long balance = storage.balanceOf(profile.getId());
+            long saved = storage.balanceOf(profile.getId(), Pocket.SAVINGS);
             long promised = Commitments.players().committedBy(profile.getId());
             source.sendSuccess(() -> promised > 0
                     ? Component.translatable("economycore.command.credits.balance_of_promised",
-                    profile.getName(), CreditFormat.of(balance), CreditFormat.of(promised))
+                    profile.getName(), CreditFormat.of(balance), CreditFormat.of(saved),
+                    CreditFormat.of(promised))
                     : Component.translatable("economycore.command.credits.balance_of",
-                    profile.getName(), CreditFormat.of(balance)), false);
+                    profile.getName(), CreditFormat.of(balance), CreditFormat.of(saved)), false);
         }
         return profiles.size();
+    }
+
+    /**
+     * Puts credits from the purse away in savings.
+     * <p>
+     * Only what is free: credits promised at a table or in a bid stay in the
+     * purse, or saving them would cancel the wager the way spending them
+     * elsewhere used to.
+     */
+    private static int deposit(CommandSourceStack source, long requested) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        CreditStorage storage = CreditStorage.get(source.getServer());
+        long balance = storage.balanceOf(player.getUUID());
+        long free = Commitments.players().spendable(player.getUUID(), balance);
+        long amount = requested == ALL ? free : requested;
+        if (amount <= 0) {
+            source.sendFailure(Component.translatable("economycore.command.credits.deposit_nothing"));
+            return 0;
+        }
+        if (amount > free) {
+            source.sendFailure(Component.translatable(amount <= balance
+                    ? "economycore.command.credits.deposit_committed"
+                    : "economycore.command.credits.deposit_short", CreditFormat.of(free)));
+            return 0;
+        }
+        return moveBetweenPockets(source, player, storage, Pocket.PURSE, Pocket.SAVINGS, amount,
+                TransactionType.SAVINGS_DEPOSIT, "economycore.command.credits.deposited");
+    }
+
+    /** Takes credits out of savings into the purse, where they can be spent. */
+    private static int withdraw(CommandSourceStack source, long requested) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        CreditStorage storage = CreditStorage.get(source.getServer());
+        long saved = storage.balanceOf(player.getUUID(), Pocket.SAVINGS);
+        long amount = requested == ALL ? saved : requested;
+        if (amount <= 0) {
+            source.sendFailure(Component.translatable("economycore.command.credits.withdraw_nothing"));
+            return 0;
+        }
+        if (amount > saved) {
+            source.sendFailure(Component.translatable("economycore.command.credits.withdraw_short",
+                    CreditFormat.of(saved)));
+            return 0;
+        }
+        return moveBetweenPockets(source, player, storage, Pocket.SAVINGS, Pocket.PURSE, amount,
+                TransactionType.SAVINGS_WITHDRAW, "economycore.command.credits.withdrew");
+    }
+
+    /**
+     * One settlement, so both pockets move or neither does, and both lines
+     * reach the log together.
+     */
+    private static int moveBetweenPockets(CommandSourceStack source, ServerPlayer player,
+                                          CreditStorage storage, Pocket from, Pocket to, long amount,
+                                          TransactionType type, String doneKey) {
+        Settlement.Result result = Settlement.create()
+                .move(player.getUUID(), from, -amount, type)
+                .move(player.getUUID(), to, amount, type)
+                .apply(source.getServer(), type.code());
+        if (!result.applied()) {
+            source.sendFailure(Component.translatable(result.refusal() == Settlement.Refusal.BALANCE_CAP
+                    ? "economycore.exchange.cap_reached"
+                    : "economycore.command.credits.pay_short", CreditFormat.of(storage.balanceOf(
+                    player.getUUID(), from))));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.translatable(doneKey, CreditFormat.of(amount),
+                CreditFormat.of(storage.balanceOf(player.getUUID())),
+                CreditFormat.of(storage.balanceOf(player.getUUID(), Pocket.SAVINGS))), false);
+        return 1;
     }
 
     /**

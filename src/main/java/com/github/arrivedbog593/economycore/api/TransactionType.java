@@ -65,6 +65,15 @@ public final class TransactionType {
      */
     public static final TransactionType WELCOME = register("welcome", true);
 
+    /**
+     * A player put credits from their purse into their savings. Logged twice,
+     * once for each pocket, like a transfer between two players.
+     */
+    public static final TransactionType SAVINGS_DEPOSIT = register("savings_deposit", true);
+
+    /** A player took credits out of their savings into their purse. */
+    public static final TransactionType SAVINGS_WITHDRAW = register("savings_withdraw", true);
+
     private final String code;
     private final boolean recoverable;
 

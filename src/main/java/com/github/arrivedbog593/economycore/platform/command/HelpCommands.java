@@ -54,6 +54,8 @@ public final class HelpCommands {
             new Entry("/credits", "economycore.help.credits", EVERYONE),
             new Entry("/credits balance <player>", "economycore.help.credits_balance_of", BANK),
             new Entry("/credits pay <player> <amount>", "economycore.help.credits_pay", EVERYONE),
+            new Entry("/credits deposit <amount|all>", "economycore.help.credits_deposit", EVERYONE),
+            new Entry("/credits withdraw <amount|all>", "economycore.help.credits_withdraw", EVERYONE),
             new Entry("/credits give <player> <amount>", "economycore.help.credits_give", BANK),
             new Entry("/credits take <player> <amount>", "economycore.help.credits_take", BANK),
             new Entry("/credits set <player> <amount>", "economycore.help.credits_set", BANK),

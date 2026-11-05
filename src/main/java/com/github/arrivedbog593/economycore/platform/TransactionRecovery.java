@@ -1,5 +1,6 @@
 package com.github.arrivedbog593.economycore.platform;
 
+import com.github.arrivedbog593.economycore.api.Pocket;
 import com.github.arrivedbog593.economycore.engine.RecoveryPlan;
 import com.github.arrivedbog593.economycore.engine.TransactionRecord;
 import com.mojang.logging.LogUtils;
@@ -84,13 +85,15 @@ public final class TransactionRecovery {
                     + "have duplicated value.", plan.discardedCount());
         }
 
-        for (Map.Entry<UUID, Long> entry : plan.deltas().entrySet()) {
-            long before = storage.balanceOf(entry.getKey());
-            long after = Math.max(0, before + entry.getValue());
-            storage.setBalance(entry.getKey(), after);
-            LOGGER.info("[Economy] Restored {}: {} -> {} ({}{})",
-                    entry.getKey(), before, after,
-                    entry.getValue() >= 0 ? "+" : "", entry.getValue());
+        for (Pocket pocket : Pocket.values()) {
+            for (Map.Entry<UUID, Long> entry : plan.deltas(pocket).entrySet()) {
+                long before = storage.balanceOf(entry.getKey(), pocket);
+                long after = Math.max(0, before + entry.getValue());
+                storage.setBalance(entry.getKey(), pocket, after);
+                LOGGER.info("[Economy] Restored {} ({}): {} -> {} ({}{})",
+                        entry.getKey(), pocket.code(), before, after,
+                        entry.getValue() >= 0 ? "+" : "", entry.getValue());
+            }
         }
 
         storage.setLastSequence(plan.highestSequence());

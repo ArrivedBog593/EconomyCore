@@ -1,6 +1,7 @@
 package com.github.arrivedbog593.economycore.platform;
 
 import com.github.arrivedbog593.economycore.EconomyCore;
+import com.github.arrivedbog593.economycore.api.Pocket;
 import com.github.arrivedbog593.economycore.api.TransactionType;
 import com.github.arrivedbog593.economycore.platform.command.BankCommands;
 import com.github.arrivedbog593.economycore.platform.command.CounterCommands;
@@ -70,10 +71,16 @@ public final class EconomyEvents {
      */
     public static void record(CreditStorage storage, TransactionType type, UUID owner,
                               long delta, long balance, String detail) {
+        record(storage, type, owner, Pocket.PURSE, delta, balance, detail);
+    }
+
+    /** The same, for a movement of a given pocket. */
+    public static void record(CreditStorage storage, TransactionType type, UUID owner, Pocket pocket,
+                              long delta, long balance, String detail) {
         if (transactionLog == null) {
             return;
         }
-        long sequence = transactionLog.record(type, owner, delta, balance, detail);
+        long sequence = transactionLog.record(type, owner, pocket, delta, balance, detail);
         storage.setLastSequence(sequence);
     }
 

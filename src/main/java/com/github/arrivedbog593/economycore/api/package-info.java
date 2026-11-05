@@ -3,7 +3,8 @@
  * shape from one release to the next.
  * <p>
  * Everything a mod needs to take part in the economy is here: reading a
- * balance and what of it is spendable ({@link com.github.arrivedbog593.economycore.api.Credits}),
+ * balance, in a player's purse or savings ({@link com.github.arrivedbog593.economycore.api.Pocket}),
+ * and what of it is spendable ({@link com.github.arrivedbog593.economycore.api.Credits}),
  * promising credits that are not yet paid ({@link com.github.arrivedbog593.economycore.api.PlayerCommitments}),
  * moving credits all at once, logged and recoverable
  * ({@link com.github.arrivedbog593.economycore.api.Settlement}), the server's own
