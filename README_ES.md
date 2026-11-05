@@ -14,8 +14,9 @@ bazares.
 ## Qué añade
 
 - **Cuentas personales en créditos** para cada jugador, guardadas con el mundo, en dos
-  bolsillos: un monedero para gastar y un banco donde guardar a salvo. Cada movimiento queda
-  en un registro, y lo que un crash dejó a medias se repone al arrancar.
+  bolsillos: un monedero para gastar, del que el servidor puede hacer perder una parte al
+  morir, y un banco donde guardar a salvo. Cada movimiento queda en un registro, y lo que un
+  crash dejó a medias se repone al arrancar.
 - **La casa de cambio**: entrega cualquier objeto a cambio de créditos y recómpralo
   después, a los precios que el servidor fija dentro del juego. Los objetos de cualquier mod
   pueden ser moneda, o simples lingotes de vanilla. Un recargo de recompra opcional evita
@@ -62,8 +63,9 @@ tienda, el recargo.
 | `/credits give / take / set` | administradores del staff, operadores | Cambia un saldo |
 | `/economycore help` | todos | Todos los comandos que puedes usar, con una línea sobre cada uno |
 
-`/economycore` también cubre los precios (`values`), el recargo de recompra (`spread`), la
-tienda (`shop`), el banco del servidor (`bank`) y la lista de staff (`staff`).
+`/economycore` también cubre los precios (`values`), el recargo de recompra (`spread`), lo que
+pierden los jugadores del monedero al morir (`deathloss`, desactivado por defecto), la tienda
+(`shop`), el banco del servidor (`bank`) y la lista de staff (`staff`).
 `/economycore help` los muestra a quien pueda usarlos.
 
 ## Configuración

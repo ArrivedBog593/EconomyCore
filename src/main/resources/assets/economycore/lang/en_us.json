@@ -31,6 +31,7 @@
   "economycore.staff.admin_to_you": "You are now an administrator: you can configure the shop and the exchange, run the server bank with /economycore bank and players' balances with /credits give, take and set, and whatever other mods entrust to administrators. Right click with the key.",
   "economycore.staff.removed_from_you": "You are no longer on the staff.",
   "economycore.welcome": "Welcome! You start with %s credits.",
+  "economycore.death_loss": "You lost %s credits from your purse. Credits in the bank are safe: /credits deposit",
 
   "economycore.admin.shop.title": "Shop Settings",
   "economycore.admin.shop.price": "Price",
@@ -145,6 +146,9 @@
   "economycore.spread.set": "Buyback surcharge set to %s%%.",
   "economycore.spread.show": "Buyback surcharge: %s%%. Default: %s%% (off). Change it with /economycore spread <percent>.",
   "economycore.spread.off": "Buyback surcharge turned off. Items cost exactly what they sold for.",
+  "economycore.deathloss.set": "Players now lose %s%% of their purse when they die. Savings are always safe.",
+  "economycore.deathloss.show": "Players lose %s%% of their purse when they die. Default: 0%% (off). Change it with /economycore deathloss <percent>.",
+  "economycore.deathloss.off": "Players no longer lose credits when they die.",
 
   "economycore.bank.off": "The server bank is off: no installed mod uses it and the config does not keep it on. What the server takes in leaves circulation.",
   "economycore.bank.balance": "Server bank: %s credits",
@@ -237,6 +241,7 @@
   "economycore.help.values_remove": "Stop an item converting to credits",
   "economycore.help.values_check": "Look for prices that could be farmed for profit",
   "economycore.help.spread": "The surcharge the exchange charges when buying items back. Without a value, shows the current one",
+  "economycore.help.deathloss": "The share of their purse players lose when they die; savings are never touched. Without a value, shows the current one",
   "economycore.help.bank": "The server bank: balance, who uses it, and where income goes",
   "economycore.help.bank_add": "Put credits into the server bank",
   "economycore.help.bank_take": "Take credits out, never below what mods have promised",

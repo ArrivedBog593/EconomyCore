@@ -66,6 +66,7 @@ public final class HelpCommands {
                     "economycore.help.values_remove", OPERATORS),
             new Entry("/economycore values check", "economycore.help.values_check", OPERATORS),
             new Entry("/economycore spread [percent]", "economycore.help.spread", OPERATORS),
+            new Entry("/economycore deathloss [percent]", "economycore.help.deathloss", OPERATORS),
 
             new Entry("/economycore bank", "economycore.help.bank", BANK),
             new Entry("/economycore bank add <amount>", "economycore.help.bank_add", BANK),

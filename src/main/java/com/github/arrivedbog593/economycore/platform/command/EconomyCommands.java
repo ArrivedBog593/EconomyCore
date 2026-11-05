@@ -3,6 +3,7 @@ package com.github.arrivedbog593.economycore.platform.command;
 import com.github.arrivedbog593.economycore.engine.CreditAccount;
 import com.github.arrivedbog593.economycore.engine.CreditValueTable;
 import com.github.arrivedbog593.economycore.engine.EconomyIssue;
+import com.github.arrivedbog593.economycore.platform.DeathLoss;
 import com.github.arrivedbog593.economycore.platform.EconomyData;
 import com.github.arrivedbog593.economycore.platform.EconomyEvents;
 import com.github.arrivedbog593.economycore.platform.ItemIds;
@@ -123,6 +124,13 @@ public final class EconomyCommands {
                         .executes(context -> spread(context.getSource(),
                                 IntegerArgumentType.getInteger(context, "percent")))));
 
+        root.then(Commands.literal("deathloss")
+                .requires(source -> source.hasPermission(2))
+                .executes(context -> showDeathLoss(context.getSource()))
+                .then(Commands.argument("percent", IntegerArgumentType.integer(0, DeathLoss.MAX_PERCENT))
+                        .executes(context -> deathLoss(context.getSource(),
+                                IntegerArgumentType.getInteger(context, "percent")))));
+
         dispatcher.register(root);
     }
 
@@ -150,6 +158,25 @@ public final class EconomyCommands {
         source.sendSuccess(() -> percent == CreditValueTable.NO_SPREAD
                 ? Component.translatable("economycore.spread.off")
                 : Component.translatable("economycore.spread.set", percent), true);
+        return 1;
+    }
+
+    /** What a player loses on dying, typed without a value: the setting now and how to change it. */
+    private static int showDeathLoss(CommandSourceStack source) {
+        int percent = EconomyData.get(source.getServer()).deathLossPercent();
+        source.sendSuccess(() -> Component.translatable("economycore.deathloss.show", percent), false);
+        return percent;
+    }
+
+    /**
+     * Sets the share of their free purse a player loses on dying. Savings are
+     * never touched; see {@link DeathLoss}.
+     */
+    private static int deathLoss(CommandSourceStack source, int percent) {
+        EconomyData.get(source.getServer()).setDeathLossPercent(percent);
+        source.sendSuccess(() -> percent == 0
+                ? Component.translatable("economycore.deathloss.off")
+                : Component.translatable("economycore.deathloss.set", percent), true);
         return 1;
     }
 

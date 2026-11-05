@@ -74,6 +74,12 @@ public final class TransactionType {
     /** A player took credits out of their savings into their purse. */
     public static final TransactionType SAVINGS_WITHDRAW = register("savings_withdraw", true);
 
+    /**
+     * A share of a player's purse lost when they died. Not recoverable: a
+     * crash rolls the death back with the world, and the credits with it.
+     */
+    public static final TransactionType DEATH_LOSS = register("death_loss", false);
+
     private final String code;
     private final boolean recoverable;
 

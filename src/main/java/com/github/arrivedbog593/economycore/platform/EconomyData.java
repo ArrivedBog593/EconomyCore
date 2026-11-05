@@ -64,6 +64,7 @@ public final class EconomyData extends SavedData {
     private static final String KEY_SHOP_ENTRIES = "shop_entries";
 
     private static final String KEY_SPREAD_PERCENT = "buyback_spread_percent";
+    private static final String KEY_DEATH_LOSS_PERCENT = "death_loss_percent";
     private static final String KEY_STAFF = "staff";
     private static final String KEY_STAFF_ID = "id";
     private static final String KEY_STAFF_RANK = "rank";
@@ -82,6 +83,9 @@ public final class EconomyData extends SavedData {
     private final List<ShopEntry> shopEntries = new ArrayList<>();
 
     private int spreadPercent = CreditValueTable.NO_SPREAD;
+
+    /** The share of a free purse a player loses on dying, as a percentage. Off by default. */
+    private int deathLossPercent;
 
     /**
      * Who may configure the casino without being an operator, and how far.
@@ -120,6 +124,7 @@ public final class EconomyData extends SavedData {
             data.spreadPercent = Math.clamp(tag.getInt(KEY_SPREAD_PERCENT),
                     CreditValueTable.NO_SPREAD, CreditValueTable.MAX_SPREAD_PERCENT);
         }
+        data.deathLossPercent = Math.clamp(tag.getInt(KEY_DEATH_LOSS_PERCENT), 0, DeathLoss.MAX_PERCENT);
         return data;
     }
 
@@ -138,6 +143,7 @@ public final class EconomyData extends SavedData {
         tag.put(KEY_CONVERSIONS, writeFrom(conversions));
         writeShop(tag, registries);
         tag.putInt(KEY_SPREAD_PERCENT, spreadPercent);
+        tag.putInt(KEY_DEATH_LOSS_PERCENT, deathLossPercent);
 
         ListTag listed = new ListTag();
         staff.forEach((member, rank) -> {
@@ -220,6 +226,19 @@ public final class EconomyData extends SavedData {
             throw new IllegalArgumentException("Spread out of range: " + percent);
         }
         this.spreadPercent = percent;
+        setDirty();
+    }
+
+    /** The share of a free purse a player loses on dying, as a percentage. */
+    public int deathLossPercent() {
+        return deathLossPercent;
+    }
+
+    public void setDeathLossPercent(int percent) {
+        if (percent < 0 || percent > DeathLoss.MAX_PERCENT) {
+            throw new IllegalArgumentException("Death loss out of range: " + percent);
+        }
+        this.deathLossPercent = percent;
         setDirty();
     }
 

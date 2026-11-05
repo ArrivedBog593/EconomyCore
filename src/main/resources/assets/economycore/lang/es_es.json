@@ -31,6 +31,7 @@
   "economycore.staff.admin_to_you": "Ahora eres administrador: puedes configurar la tienda y la casa de cambio, manejar el banco del servidor con /economycore bank y los saldos de los jugadores con /credits give, take y set, y lo que otros mods confíen a los administradores. Haz clic derecho con la llave.",
   "economycore.staff.removed_from_you": "Ya no formas parte del staff.",
   "economycore.welcome": "¡Te damos la bienvenida! Empiezas con %s créditos.",
+  "economycore.death_loss": "Perdiste %s créditos de tu monedero. Los créditos del banco están a salvo: /credits deposit",
 
   "economycore.admin.shop.title": "Ajustes de la tienda",
   "economycore.admin.shop.price": "Precio",
@@ -145,6 +146,9 @@
   "economycore.spread.set": "Recargo de recompra fijado en %s%%.",
   "economycore.spread.show": "Recargo de recompra: %s%%. Por defecto: %s%% (desactivado). Cámbialo con /economycore spread <porcentaje>.",
   "economycore.spread.off": "Recargo de recompra desactivado. Los objetos cuestan justo lo que pagaron al venderlos.",
+  "economycore.deathloss.set": "Ahora los jugadores pierden el %s%% de su monedero al morir. Lo del banco siempre está a salvo.",
+  "economycore.deathloss.show": "Los jugadores pierden el %s%% de su monedero al morir. Por defecto: 0%% (desactivado). Cámbialo con /economycore deathloss <porcentaje>.",
+  "economycore.deathloss.off": "Los jugadores ya no pierden créditos al morir.",
 
   "economycore.bank.off": "El banco del servidor está apagado: ningún mod instalado lo usa y la configuración no lo mantiene encendido. Lo que cobra el servidor sale de circulación.",
   "economycore.bank.balance": "Banco del servidor: %s créditos",
@@ -237,6 +241,7 @@
   "economycore.help.values_remove": "Deja de convertir un objeto en créditos",
   "economycore.help.values_check": "Busca precios que se puedan farmear con ganancia",
   "economycore.help.spread": "El recargo que cobra la casa de cambio al recomprar objetos. Sin valor, muestra el actual",
+  "economycore.help.deathloss": "La parte del monedero que pierden los jugadores al morir; el banco nunca se toca. Sin valor, muestra la actual",
   "economycore.help.bank": "El banco del servidor: saldo, quién lo usa y adónde va lo que se cobra",
   "economycore.help.bank_add": "Mete créditos al banco del servidor",
   "economycore.help.bank_take": "Saca créditos, nunca por debajo de lo comprometido con los mods",
