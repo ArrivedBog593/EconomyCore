@@ -45,13 +45,13 @@ server chooses which ones it uses.
 
 A staff key opens the settings of any of them: prices, the shop's listings, the surcharge.
 
-Players' banks have two of the three: a **banker**, a third kind of clerk in the bank's
-green and gold, and **`/bank`**. Both open a window laid out like SkyBlock's bank: the purse
-and the bank at the top, and a row of items to click — a chest to deposit all, half or an
-amount, a dispenser to withdraw all, half, a fifth or an amount, a map with the last ten
-movements, a torch with how the bank works on this server — each with a tooltip saying what
-it will do. Switching `/bank` off in the config also closes `/credits deposit` and
-`/credits withdraw`, so players have to go to a banker.
+Players' banks have all three too: an **ATM** block, a **banker** (a third kind of clerk, in
+the bank's green and gold) and **`/bank`**. Each opens the same window, drawn like the shop's:
+the purse and the bank at the top, and tabs down its side to deposit (all, half or an amount,
+which may be typed as `1.5k` or `2m`), to withdraw (all, half, 20% or an amount), to see the
+last ten movements, and to read how the bank works on this server. Switching `/bank` off in
+the config also closes `/credits deposit` and `/credits withdraw`, so players have to go to
+an ATM or a banker.
 
 Each player sees their purse and their bank at the right of the screen, above any
 scoreboard sidebar. It can be hidden in `config/economycore-client.toml`.

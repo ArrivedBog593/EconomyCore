@@ -3,6 +3,7 @@
 
   "block.economycore.exchange": "Exchange",
   "block.economycore.shop": "Shop",
+  "block.economycore.atm": "ATM",
 
   "item.economycore.admin_key": "Staff Key",
   "item.economycore.exchange_clerk_spawn_egg": "Exchange Clerk Spawn Egg",

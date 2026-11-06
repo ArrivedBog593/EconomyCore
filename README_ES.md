@@ -50,14 +50,14 @@ jugador. Cada servidor elige cuáles usa.
 Una llave de staff abre la configuración de cualquiera de ellos: precios, lo que vende la
 tienda, el recargo.
 
-El banco de los jugadores tiene dos de las tres: un **banquero**, un tercer tipo de
-empleado con el verde y dorado del banco, y **`/bank`**. Los dos abren una ventana parecida
-al banco de SkyBlock: el monedero y el banco arriba, y una fila de objetos en los que hacer
-clic — un cofre para depositar todo, la mitad o una cantidad; un dispensador para retirar
-todo, la mitad, el 20 % o una cantidad; un mapa con los últimos diez movimientos; una
-antorcha con cómo funciona el banco en este servidor —, cada uno con un tooltip que dice qué
-va a hacer. Apagar `/bank` en la configuración también cierra `/credits deposit` y
-`/credits withdraw`, para que los jugadores tengan que ir a un banquero.
+El banco de los jugadores también tiene las tres: un bloque **cajero automático**, un
+**banquero** (un tercer tipo de empleado, con el verde y dorado del banco) y **`/bank`**. Los
+tres abren la misma ventana, dibujada como la de la tienda: el monedero y el banco arriba, y
+pestañas al costado para depositar (todo, la mitad o una cantidad, que se puede escribir como
+`1.5k` o `2m`), retirar (todo, la mitad, el 20 % o una cantidad), ver los últimos diez
+movimientos y leer cómo funciona el banco en este servidor. Apagar `/bank` en la configuración
+también cierra `/credits deposit` y `/credits withdraw`, para que los jugadores tengan que ir
+a un cajero o a un banquero.
 
 Cada jugador ve su monedero y su banco a la derecha de la pantalla, encima de la barra
 lateral del marcador si la hay. Se puede ocultar en `config/economycore-client.toml`.

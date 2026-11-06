@@ -3,6 +3,7 @@
 
   "block.economycore.exchange": "Casa de cambio",
   "block.economycore.shop": "Tienda",
+  "block.economycore.atm": "Cajero automático",
 
   "item.economycore.admin_key": "Llave de staff",
   "item.economycore.exchange_clerk_spawn_egg": "Huevo generador de cajero de la casa de cambio",

@@ -1,6 +1,7 @@
 package com.github.arrivedbog593.economycore.platform.registry;
 
 import com.github.arrivedbog593.economycore.EconomyCore;
+import com.github.arrivedbog593.economycore.platform.block.AtmBlock;
 import com.github.arrivedbog593.economycore.platform.block.ExchangeBlock;
 import com.github.arrivedbog593.economycore.platform.block.ShopBlock;
 import net.minecraft.world.level.block.Block;
@@ -36,6 +37,18 @@ public final class EconomyBlocks {
                     .mapColor(MapColor.TERRACOTTA_CYAN)
                     .strength(3.5F, 9.0F)
                     .sound(SoundType.WOOD)
+                    // Not a full cube: neighbors must not hide their faces behind it.
+                    .noOcclusion()
+                    .requiresCorrectToolForDrops());
+
+    /** A player's own bank, in a cash machine. Metal, so a pickaxe takes it. */
+    public static final DeferredBlock<AtmBlock> ATM = BLOCKS.registerBlock(
+            "atm",
+            AtmBlock::new,
+            BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_GREEN)
+                    .strength(3.5F, 9.0F)
+                    .sound(SoundType.METAL)
                     // Not a full cube: neighbors must not hide their faces behind it.
                     .noOcclusion()
                     .requiresCorrectToolForDrops());

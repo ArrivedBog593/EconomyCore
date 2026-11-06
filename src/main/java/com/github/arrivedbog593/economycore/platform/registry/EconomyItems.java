@@ -22,6 +22,9 @@ public final class EconomyItems {
     public static final DeferredItem<BlockItem> SHOP =
             ITEMS.registerSimpleBlockItem("shop", EconomyBlocks.SHOP, new Item.Properties());
 
+    public static final DeferredItem<BlockItem> ATM =
+            ITEMS.registerSimpleBlockItem("atm", EconomyBlocks.ATM, new Item.Properties());
+
     /**
      * Clerks, put down like any mob. No staff rank asked: an egg in survival
      * only ever comes out of creative, and whoever has creative can already

@@ -14,6 +14,7 @@
 ## ✨ New Features
 
 - **A purse and a bank for every player.** The purse is what everything spends from: the shop, the exchange, `/credits pay`, the tables of mods like TableGames. The bank is put away and cannot be spent until it is taken back out. `/credits deposit <amount>` and `/credits withdraw <amount>` move credits between them, `all` for everything; credits set aside at a game table or in a bid cannot be put away. `/credits` shows both, and so does `/credits balance <player>` for staff
+- **ATM.** A cash machine block in the bank's green and gold, with a screen, a keypad and a card slot, that opens a player's bank where it stands: the bank's own block, beside the banker and `/bank`, as the exchange and the shop have theirs. Broken with a pickaxe
 - **Bankers.** A third kind of clerk, in the bank's green and gold, with three outfits of their own. Right-click one, or type `/bank`, for a window laid out like SkyBlock's bank: your purse and your bank at the top, and a row of items with tooltips. The chest deposits all, half or an amount; the dispenser withdraws all, half, 20% or an amount; the map shows your last ten movements; the torch says how the bank works on this server. `access.bankCommand` in the config switches `/bank` off, and `/credits deposit` and `/credits withdraw` with it, so players have to go to a banker
 - **Losing credits on death.** `/economycore deathloss <percent>` makes players lose that share of their purse when they die, which is what makes the bank worth using. It is off by default, and typing it without a value shows the current one. Only the free part of the purse is touched, never savings nor credits set aside at a game table. What the player keeps is rounded to the nearest credit, halves in their favor: with half of 15 to lose, they keep 8. Nothing is lost under `keepInventory`, and what is lost is the server's income, like the shop's sales. A crash that rolls a death back gives the credits back with it. `/economycore deathloss combat true` charges only deaths at the hands of a mob or a player, as SkyBlock does, so a fall or the lava costs nothing
 - **Interest on savings.** Off by default. With `interest.enabled`, every `interest.periodHours` real hours (31 by default) the bank pays everyone with savings, online or not, by tranches: 2% on the first 10,000,000 and 1% up to 15,000,000 unless `interest.tranches` says otherwise, and nothing above the last. Rates may have decimals. Every credit it pays is new money
@@ -30,6 +31,7 @@
 ## 🐛 Bug Fixes
 
 - The exchange and the shop no longer hide the faces of the blocks next to them
+- **The exchange and the shop dropped nothing when broken.** Their loot tables were in the wrong folder, so Minecraft never found them; they now drop themselves
 
 ## 📦 Dependencies
 
@@ -52,6 +54,7 @@
 ## ✨ Nuevas Características
 
 - **Un monedero y un banco para cada jugador.** Del monedero sale todo lo que se gasta: la tienda, la casa de cambio, `/credits pay`, las mesas de mods como TableGames. Lo del banco está guardado y no se puede gastar hasta sacarlo. `/credits deposit <cantidad>` y `/credits withdraw <cantidad>` mueven créditos entre los dos, `all` para todo; los créditos apartados en una mesa de juego o una puja no se pueden guardar. `/credits` muestra los dos, y también `/credits balance <jugador>` para el staff
+- **Cajero automático.** Un bloque con el verde y dorado del banco, con pantalla, teclado y ranura de tarjetas, que abre el banco del jugador donde esté: el bloque propio del banco, junto al banquero y `/bank`, como la casa de cambio y la tienda tienen el suyo. Se rompe con pico
 - **Banqueros.** Un tercer tipo de empleado, con el verde y dorado del banco y tres atuendos propios. Haz clic derecho en uno, o escribe `/bank`, para una ventana parecida al banco de SkyBlock: tu monedero y tu banco arriba, y una fila de objetos con tooltips. El cofre deposita todo, la mitad o una cantidad; el dispensador retira todo, la mitad, el 20 % o una cantidad; el mapa muestra tus últimos diez movimientos; la antorcha explica cómo funciona el banco en este servidor. `access.bankCommand` en la configuración apaga `/bank`, y con él `/credits deposit` y `/credits withdraw`, para que los jugadores tengan que ir a un banquero
 - **Perder créditos al morir.** `/economycore deathloss <porcentaje>` hace que los jugadores pierdan esa parte de su monedero al morir, que es lo que hace que valga la pena usar el banco. Está desactivado por defecto, y sin valor muestra el actual. Solo se toca la parte libre del monedero, nunca el banco ni los créditos apartados en una mesa de juego. Lo que le queda al jugador se redondea al crédito más cercano, y las mitades a su favor: si pierde la mitad de 15, se queda con 8. Con `keepInventory` no se pierde nada, y lo perdido es ingreso del servidor, como las ventas de la tienda. Un crash que revierte una muerte devuelve también los créditos. `/economycore deathloss combat true` cobra solo las muertes a manos de un mob o un jugador, como en SkyBlock, así que una caída o la lava no cuestan nada
 - **Interés del banco.** Desactivado por defecto. Con `interest.enabled`, cada `interest.periodHours` horas reales (31 por defecto) el banco paga a todos los que tengan algo guardado, conectados o no, por tramos: un 2 % por los primeros 10.000.000 y un 1 % hasta 15.000.000, salvo que `interest.tranches` diga otra cosa, y nada por encima del último. Los porcentajes pueden tener decimales. Cada crédito que paga es dinero nuevo
@@ -68,6 +71,7 @@
 ## 🐛 Correcciones
 
 - La casa de cambio y la tienda ya no ocultan las caras de los bloques de al lado
+- **La casa de cambio y la tienda no soltaban nada al romperlas.** Sus tablas de botín estaban en la carpeta equivocada y Minecraft no las encontraba; ahora se sueltan a sí mismas
 
 ## 📦 Dependencias
 

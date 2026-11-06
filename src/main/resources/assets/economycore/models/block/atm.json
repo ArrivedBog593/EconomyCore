@@ -1,0 +1,36 @@
+{
+  "parent": "block/block",
+  "textures": {
+    "front": "economycore:block/atm/front",
+    "panel": "economycore:block/atm/panel",
+    "wood": "economycore:block/counter/wood",
+    "particle": "economycore:block/atm/panel"
+  },
+  "elements": [
+    {
+      "__comment": "pedestal",
+      "from": [2, 0, 3],
+      "to": [14, 10, 13],
+      "faces": {
+        "north": { "uv": [2, 6, 14, 16], "texture": "#front" },
+        "south": { "uv": [2, 6, 14, 16], "texture": "#panel" },
+        "west": { "uv": [3, 6, 13, 16], "texture": "#panel" },
+        "east": { "uv": [3, 6, 13, 16], "texture": "#panel" },
+        "down": { "uv": [2, 3, 14, 13], "texture": "#wood", "cullface": "down" }
+      }
+    },
+    {
+      "__comment": "hood",
+      "from": [1, 10, 2],
+      "to": [15, 16, 14],
+      "faces": {
+        "north": { "uv": [1, 0, 15, 6], "texture": "#front" },
+        "south": { "uv": [1, 0, 15, 6], "texture": "#panel" },
+        "west": { "uv": [2, 0, 14, 6], "texture": "#panel" },
+        "east": { "uv": [2, 0, 14, 6], "texture": "#panel" },
+        "up": { "uv": [1, 2, 15, 14], "texture": "#panel" },
+        "down": { "uv": [1, 2, 15, 14], "texture": "#panel" }
+      }
+    }
+  ]
+}

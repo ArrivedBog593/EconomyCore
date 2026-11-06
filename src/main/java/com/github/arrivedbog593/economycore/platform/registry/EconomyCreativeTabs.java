@@ -22,6 +22,7 @@ public final class EconomyCreativeTabs {
                     .displayItems((parameters, output) -> {
                         output.accept(EconomyItems.EXCHANGE.get());
                         output.accept(EconomyItems.SHOP.get());
+                        output.accept(EconomyItems.ATM.get());
                         output.accept(EconomyItems.EXCHANGE_CLERK_SPAWN_EGG.get());
                         output.accept(EconomyItems.SHOP_CLERK_SPAWN_EGG.get());
                         output.accept(EconomyItems.BANKER_SPAWN_EGG.get());
