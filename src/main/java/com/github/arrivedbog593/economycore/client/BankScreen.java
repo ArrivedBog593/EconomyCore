@@ -1,5 +1,6 @@
 package com.github.arrivedbog593.economycore.client;
 
+import com.github.arrivedbog593.economycore.EconomyCore;
 import com.github.arrivedbog593.economycore.api.CreditFormat;
 import com.github.arrivedbog593.economycore.api.CreditMath;
 import com.github.arrivedbog593.economycore.engine.BankMovement;
@@ -16,10 +17,10 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
 
@@ -27,62 +28,107 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
- * The banker's window: SkyBlock's bank, in a panel of our own.
+ * The banker's window: tabs down the left, the chosen page on the right, and
+ * both balances always at the top of it.
  * <p>
- * Half and half on purpose. From SkyBlock comes what players who know it will
- * reach for: a row of items to click — a chest to deposit, a dispenser to
- * withdraw, a map for recent movements, a torch for how the bank works —
- * each with a tooltip saying what it will do and with how much, and behind
- * deposit and withdraw the same shortcuts, all, half, a fifth, an amount.
- * From the panel comes what a chest cannot show: both balances in plain view
- * the whole time, and a field to type an amount into instead of a sign.
+ * Dark, unlike the vanilla-gray shop and exchange: a bank reads better as a
+ * quiet room than as a crafting table, and it is what SkyBlock players coming
+ * from a dark-mode client expect. Its icons are its own — a safe with money
+ * going in, the same safe with money coming out, a ledger, an "i" — rather
+ * than a chest and a dispenser standing in for them.
  * <p>
- * The figures are the menu's, kept in step by the server every tick, so they
+ * Nothing hides in a tooltip. Recent movements and how the bank works each
+ * have a page, so they can be read without holding the mouse still.
+ * <p>
+ * The balances are the menu's, kept in step by the server every tick, so they
  * move the moment a deposit lands. Shares are sent as shares and worked out
- * on the server, from the balance as it is when the click arrives. What
- * would be refused is grayed out here, and the server checks again
- * regardless, saying why in the action bar if it refuses.
+ * on the server, from the balance as it is when the click arrives; an amount
+ * may be typed with a k or an m, as in SkyBlock. What would be refused is
+ * grayed out here, and the server checks again regardless, saying why in the
+ * action bar if it refuses.
  */
 public class BankScreen extends AbstractContainerScreen<BankMenu> {
 
-    private enum Mode { MAIN, DEPOSIT, WITHDRAW }
+    private enum Tab {
+        DEPOSIT("deposit"), WITHDRAW("withdraw"), RECENT("recent"), INFO("info");
 
-    /** One of the row of items: what it shows, what it says, what clicking it does. */
-    private record Tile(ItemStack icon, Component label, boolean enabled,
-                        List<Component> tooltip, Runnable action) {
+        final String key;
+        final ResourceLocation icon;
+
+        Tab(String key) {
+            this.key = key;
+            this.icon = ResourceLocation.fromNamespaceAndPath(EconomyCore.MOD_ID,
+                    "textures/gui/bank/" + key + ".png");
+        }
     }
 
-    private static final int WIDTH = 200;
-    private static final int HEIGHT = 120;
-    private static final int MARGIN = 8;
-    private static final int INNER_W = WIDTH - 2 * MARGIN;
-    private static final int COLUMN_W = (INNER_W - MARGIN) / 2;
-    private static final int RIGHT_X = MARGIN + COLUMN_W + MARGIN;
+    /** A share to move: all of it, half, a fifth. */
+    private record Share(String key, int percent) {
+    }
 
-    private static final int POCKET_Y = 18;
-    private static final int POCKET_H = 30;
-    private static final int TILE_Y = 54;
-    private static final int TILE = 26;
-    private static final int TILE_LABEL_Y = TILE_Y + TILE + 2;
-    private static final float TILE_LABEL_SCALE = 0.75F;
-    private static final int ROW_Y = 96;
-    private static final int ROW_H = 14;
-    private static final int CONFIRM_W = 60;
-    private static final int TEXT_Y = (ROW_H - 8) / 2 + 1;
+    private static final ResourceLocation COIN =
+            ResourceLocation.fromNamespaceAndPath(EconomyCore.MOD_ID, "textures/gui/bank/coin.png");
 
-    private static final int DEPOSIT_FACE = 0xFF2E7D32;
-    private static final int WITHDRAW_FACE = 0xFF8D6E1A;
-    private static final int DISABLED_FACE = 0xFF4A4A4A;
-    private static final int PURSE_TEXT = 0xFF2E7D32;
-    private static final int SAVINGS_TEXT = 0xFF1F4D2B;
+    private static final int WIDTH = 256;
+    private static final int HEIGHT = 186;
 
-    private static final int ALL = 100;
-    private static final int HALF = 50;
-    private static final int FIFTH = 20;
+    private static final int TAB_X = 6;
+    private static final int TAB_W = 44;
+    private static final int TAB_Y = 20;
+    private static final int TAB_H = 36;
 
-    private Mode mode = Mode.MAIN;
+    private static final int CONTENT_X = TAB_X + TAB_W;
+    private static final int CONTENT_Y = TAB_Y;
+    private static final int CONTENT_R = WIDTH - 6;
+    private static final int CONTENT_B = HEIGHT - 6;
+    private static final int PAD = 6;
+    private static final int INNER_X = CONTENT_X + PAD;
+    private static final int INNER_W = CONTENT_R - PAD - INNER_X;
+
+    private static final int BALANCE_Y = CONTENT_Y + PAD;
+    private static final int BALANCE_H = 28;
+    private static final int BALANCE_W = (INNER_W - PAD) / 2;
+    private static final int RULE_Y = BALANCE_Y + BALANCE_H + 5;
+    private static final int PAGE_Y = RULE_Y + 6;
+    private static final int BODY_Y = PAGE_Y + 13;
+
+    private static final int CARD_H = 30;
+    private static final int ROW_Y = BODY_Y + CARD_H + 8;
+    private static final int ROW_H = 16;
+    private static final int CONFIRM_W = 62;
+    private static final int FOOTER_Y = ROW_Y + ROW_H + 8;
+    private static final int LINE = 10;
+
+    // The dark room.
+    private static final int FRAME = 0xFF0E0E10;
+    private static final int PANEL = 0xFF232327;
+    private static final int PANEL_LIGHT = 0xFF34343A;
+    private static final int PANEL_DARK = 0xFF16161A;
+    private static final int PAGE = 0xFF2C2C31;
+    private static final int WELL = 0xFF1B1B1F;
+    private static final int CARD = 0xFF38383F;
+    private static final int CARD_HOVER = 0xFF46464F;
+    private static final int RULE = 0xFF3E3E46;
+    private static final int TEXT = 0xFFE6E6EA;
+    private static final int MUTED = 0xFF9A9AA4;
+    private static final int GOLD = 0xFFFFC94A;
+    private static final int ACCENT = 0xFFD4AF37;
+    private static final int DEPOSIT = 0xFF2E8B3E;
+    private static final int WITHDRAW = 0xFFB07418;
+    private static final int DISABLED = 0xFF3A3A40;
+
+    private static final List<Share> DEPOSIT_SHARES = List.of(
+            new Share("share.all_purse", 100), new Share("share.half_purse", 50));
+    private static final List<Share> WITHDRAW_SHARES = List.of(
+            new Share("share.all", 100), new Share("share.half", 50), new Share("share.fifth", 20));
+
+    /** The page chosen last, so the banker opens where the player left off. */
+    private static Tab remembered = Tab.DEPOSIT;
+
+    private Tab tab = remembered;
     private EditBox amount;
 
     public BankScreen(BankMenu menu, Inventory inventory, Component title) {
@@ -95,302 +141,247 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
     protected void init() {
         super.init();
         String carried = amount == null ? "" : amount.getValue();
-        amount = new EditBox(font, leftPos + MARGIN + 4, topPos + ROW_Y + TEXT_Y,
-                INNER_W - CONFIRM_W - 12, 8, Component.translatable("economycore.my_bank.amount"));
+        amount = new EditBox(font, leftPos + INNER_X + 4, topPos + ROW_Y + (ROW_H - 8) / 2,
+                INNER_W - CONFIRM_W - 12, 9, text("amount"));
         amount.setBordered(false);
-        amount.setHint(Component.translatable("economycore.my_bank.amount"));
-        // Digits only, and never more than an account can hold: thirteen digits.
-        amount.setFilter(text -> text.isEmpty() || text.matches("\\d{1,13}"));
+        amount.setTextColor(TEXT);
+        amount.setHint(text("amount_hint").withStyle(ChatFormatting.DARK_GRAY));
+        amount.setFilter(text -> text.isEmpty() || text.matches("\\d{0,13}(\\.\\d{0,2})?[kKmM]?"));
         amount.setValue(carried);
-        amount.visible = mode != Mode.MAIN;
         addRenderableWidget(amount);
+        showAmountField();
     }
 
-    private void setMode(Mode next) {
-        mode = next;
-        amount.visible = next != Mode.MAIN;
+    private void select(Tab next) {
+        tab = next;
+        remembered = next;
+        amount.setValue("");
         amount.setFocused(false);
-        if (next == Mode.MAIN) {
-            amount.setValue("");
-        }
+        showAmountField();
     }
 
-    // --- The tiles ---------------------------------------------------------------------------
-
-    private List<Tile> tiles() {
-        long free = menu.free();
-        long saved = menu.savings();
-        return switch (mode) {
-            case MAIN -> List.of(
-                    new Tile(new ItemStack(Items.CHEST), text("tile.deposit"), true, depositLore(), () -> setMode(Mode.DEPOSIT)),
-                    new Tile(new ItemStack(Items.DISPENSER), text("tile.withdraw"), true, withdrawLore(), () -> setMode(Mode.WITHDRAW)),
-                    new Tile(new ItemStack(Items.FILLED_MAP), text("tile.recent"), true, recentLore(), () -> {
-                    }),
-                    new Tile(new ItemStack(Items.REDSTONE_TORCH), text("tile.info"), true, infoLore(), () -> {
-                    }));
-            case DEPOSIT -> List.of(
-                    shareTile(Items.CHEST, 64, "tile.all", true, ALL, free),
-                    shareTile(Items.CHEST, 32, "tile.half", true, HALF, free),
-                    amountTile(),
-                    backTile());
-            case WITHDRAW -> List.of(
-                    shareTile(Items.DISPENSER, 64, "tile.all", false, ALL, saved),
-                    shareTile(Items.DISPENSER, 32, "tile.half", false, HALF, saved),
-                    shareTile(Items.DISPENSER, 20, "tile.fifth", false, FIFTH, saved),
-                    amountTile(),
-                    backTile());
-        };
-    }
-
-    /** All, half or a fifth of what there is to move, with the figure it comes to. */
-    private Tile shareTile(net.minecraft.world.item.Item item, int count, String key, boolean deposit,
-                           int percent, long of) {
-        long share = CreditMath.percentOf(of, percent, RoundingMode.FLOOR);
-        List<Component> lore = new ArrayList<>();
-        lore.add(text(key).withStyle(ChatFormatting.GREEN));
-        lore.add(text(deposit ? "deposit" : "withdraw").withStyle(ChatFormatting.DARK_GRAY));
-        lore.add(Component.empty());
-        lore.add(text("bank_balance", gold(menu.savings())).withStyle(ChatFormatting.GRAY));
-        lore.add(text(deposit ? "to_deposit" : "to_withdraw", gold(share)).withStyle(ChatFormatting.GRAY));
-        lore.add(Component.empty());
-        lore.add(share > 0
-                ? text(deposit ? "click_deposit" : "click_withdraw").withStyle(ChatFormatting.YELLOW)
-                : text("nothing").withStyle(ChatFormatting.RED));
-        return new Tile(new ItemStack(item, count), text(key), share > 0, lore,
-                () -> send(BankActionPayload.share(deposit, percent)));
-    }
-
-    private Tile amountTile() {
-        List<Component> lore = List.of(
-                text("tile.amount").withStyle(ChatFormatting.GREEN),
-                text("bank_balance", gold(menu.savings())).withStyle(ChatFormatting.GRAY),
-                Component.empty(),
-                text("type_amount").withStyle(ChatFormatting.YELLOW));
-        return new Tile(new ItemStack(Items.OAK_SIGN), text("tile.amount"), true, lore, () -> {
-            setFocused(amount);
-            amount.setFocused(true);
-        });
-    }
-
-    private Tile backTile() {
-        return new Tile(new ItemStack(Items.ARROW), text("tile.back"), true,
-                List.of(text("tile.back").withStyle(ChatFormatting.GREEN)), () -> setMode(Mode.MAIN));
-    }
-
-    private List<Component> depositLore() {
-        List<Component> lore = new ArrayList<>();
-        lore.add(text("tile.deposit_title").withStyle(ChatFormatting.GREEN));
-        lore.add(text("bank_balance", gold(menu.savings())).withStyle(ChatFormatting.GRAY));
-        lore.add(Component.empty());
-        lore.add(text("deposit_lore").withStyle(ChatFormatting.GRAY));
-        BankStatePayload state = ClientBankState.state();
-        if (state != null && !state.tranches().isEmpty()) {
-            InterestTranches.Tranche first = state.tranches().getFirst();
-            lore.add(Component.empty());
-            lore.add(text("deposit_interest", percent(first.basisPoints()), gold(first.upTo()))
-                    .withStyle(ChatFormatting.GRAY));
-            lore.add(text("interest_in", duration(ClientBankState.millisUntilInterest()))
-                    .withStyle(ChatFormatting.AQUA));
-        }
-        lore.add(Component.empty());
-        lore.add(text("click_open_deposit").withStyle(ChatFormatting.YELLOW));
-        return lore;
-    }
-
-    private List<Component> withdrawLore() {
-        return List.of(
-                text("tile.withdraw_title").withStyle(ChatFormatting.GREEN),
-                text("bank_balance", gold(menu.savings())).withStyle(ChatFormatting.GRAY),
-                Component.empty(),
-                text("withdraw_lore").withStyle(ChatFormatting.GRAY),
-                Component.empty(),
-                text("click_open_withdraw").withStyle(ChatFormatting.YELLOW));
-    }
-
-    private List<Component> recentLore() {
-        List<Component> lore = new ArrayList<>();
-        lore.add(text("tile.recent").withStyle(ChatFormatting.GREEN));
-        BankStatePayload state = ClientBankState.state();
-        List<BankMovement> recent = state == null ? List.of() : state.recent();
-        if (recent.isEmpty()) {
-            lore.add(text("recent.none").withStyle(ChatFormatting.GRAY));
-            return lore;
-        }
-        long now = System.currentTimeMillis();
-        // Newest first, the way a statement is read.
-        for (int i = recent.size() - 1; i >= 0; i--) {
-            BankMovement movement = recent.get(i);
-            String key = switch (movement.kind()) {
-                case DEPOSIT -> "recent.deposit";
-                case WITHDRAWAL -> "recent.withdrawal";
-                case INTEREST -> "recent.interest";
-            };
-            ChatFormatting sign = movement.kind() == BankMovement.Kind.WITHDRAWAL
-                    ? ChatFormatting.RED : ChatFormatting.GREEN;
-            lore.add(text(key, Component.literal(CreditFormat.of(movement.amount())).withStyle(sign),
-                    duration(now - movement.time())).withStyle(ChatFormatting.GRAY));
-        }
-        return lore;
-    }
-
-    private List<Component> infoLore() {
-        List<Component> lore = new ArrayList<>();
-        lore.add(text("tile.info").withStyle(ChatFormatting.GREEN));
-        lore.add(text("info.safe").withStyle(ChatFormatting.GRAY));
-        BankStatePayload state = ClientBankState.state();
-        if (state == null) {
-            return lore;
-        }
-        if (state.deathLossPercent() > 0) {
-            lore.add(text(state.combatOnly() ? "info.death_combat" : "info.death", state.deathLossPercent())
-                    .withStyle(ChatFormatting.GRAY));
-        } else {
-            lore.add(text("info.no_death").withStyle(ChatFormatting.GRAY));
-        }
-        lore.add(Component.empty());
-        if (state.tranches().isEmpty()) {
-            lore.add(text("info.interest_off").withStyle(ChatFormatting.GRAY));
-            return lore;
-        }
-        lore.add(text("info.interest_every", duration(state.interestPeriod())).withStyle(ChatFormatting.GRAY));
-        lore.add(text("interest_in", duration(ClientBankState.millisUntilInterest()))
-                .withStyle(ChatFormatting.AQUA));
-        lore.add(Component.empty());
-        lore.add(text("info.tranches").withStyle(ChatFormatting.GOLD));
-        long from = 0;
-        for (InterestTranches.Tranche tranche : state.tranches()) {
-            lore.add((from == 0
-                    ? text("info.tranche_first", gold(tranche.upTo()), percent(tranche.basisPoints()))
-                    : text("info.tranche_next", gold(from), gold(tranche.upTo()), percent(tranche.basisPoints())))
-                    .withStyle(ChatFormatting.YELLOW));
-            from = tranche.upTo();
-        }
-        long max = new InterestTranches(state.tranches()).maxInterest();
-        lore.add(Component.empty());
-        lore.add(text("info.max_interest", gold(max), gold(from)).withStyle(ChatFormatting.GRAY));
-        return lore;
+    private void showAmountField() {
+        amount.visible = tab == Tab.DEPOSIT || tab == Tab.WITHDRAW;
     }
 
     // --- Drawing -----------------------------------------------------------------------------
 
     @Override
     protected void renderBg(@NotNull GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
-        Panels.panel(graphics, leftPos, topPos, leftPos + imageWidth, topPos + imageHeight);
-        Panels.recess(graphics, leftPos + MARGIN, topPos + POCKET_Y, COLUMN_W, POCKET_H);
-        Panels.recess(graphics, leftPos + RIGHT_X, topPos + POCKET_Y, COLUMN_W, POCKET_H);
-        if (mode != Mode.MAIN) {
-            int fieldRight = leftPos + MARGIN + INNER_W - CONFIRM_W - 4;
-            graphics.fill(leftPos + MARGIN - 1, topPos + ROW_Y - 1, fieldRight + 1, topPos + ROW_Y + ROW_H + 1,
-                    Panels.OUTLINE);
-            graphics.fill(leftPos + MARGIN, topPos + ROW_Y, fieldRight, topPos + ROW_Y + ROW_H, 0xFF000000);
+        int x = leftPos;
+        int y = topPos;
+        // Frame and a one-pixel bevel, as vanilla's panel has, in the dark.
+        graphics.fill(x, y, x + WIDTH, y + HEIGHT, FRAME);
+        graphics.fill(x + 1, y + 1, x + WIDTH - 1, y + HEIGHT - 1, PANEL_LIGHT);
+        graphics.fill(x + 2, y + 2, x + WIDTH - 1, y + HEIGHT - 1, PANEL_DARK);
+        graphics.fill(x + 2, y + 2, x + WIDTH - 2, y + HEIGHT - 2, PANEL);
+
+        graphics.fill(x + CONTENT_X, y + CONTENT_Y, x + CONTENT_R, y + CONTENT_B, PAGE);
+
+        for (Tab each : Tab.values()) {
+            int top = y + TAB_Y + each.ordinal() * TAB_H;
+            boolean selected = each == tab;
+            boolean hovered = isOver(mouseX, mouseY, x + TAB_X, top, TAB_W, TAB_H - 2);
+            if (selected) {
+                // Joined to the page, with a strip of brass where it opens onto it.
+                graphics.fill(x + TAB_X, top, x + CONTENT_X, top + TAB_H - 2, PAGE);
+                graphics.fill(x + TAB_X, top, x + TAB_X + 2, top + TAB_H - 2, ACCENT);
+            } else if (hovered) {
+                graphics.fill(x + TAB_X, top, x + CONTENT_X - 2, top + TAB_H - 2, PANEL_LIGHT);
+            }
+            graphics.blit(each.icon, x + TAB_X + (TAB_W - 16) / 2, top + 4, 0, 0, 16, 16, 16, 16);
         }
+
+        // The two balances, in wells, and a rule under them.
+        drawBalance(graphics, x + INNER_X, y + BALANCE_Y, text("purse"), menu.purse());
+        drawBalance(graphics, x + INNER_X + BALANCE_W + PAD, y + BALANCE_Y, text("savings"), menu.savings());
+        graphics.fill(x + INNER_X, y + RULE_Y, x + INNER_X + INNER_W, y + RULE_Y + 1, RULE);
+
+        if (amount.visible) {
+            graphics.fill(x + INNER_X, y + ROW_Y, x + INNER_X + INNER_W - CONFIRM_W - 4, y + ROW_Y + ROW_H, WELL);
+        }
+    }
+
+    private void drawBalance(GuiGraphics graphics, int x, int y, Component label, long credits) {
+        graphics.fill(x, y, x + BALANCE_W, y + BALANCE_H, WELL);
+        graphics.drawString(font, label, x + 5, y + 4, MUTED, false);
+        graphics.blit(COIN, x + 5, y + 15, 0, 0, 9, 9, 9, 9);
+        String figure = CreditFormat.of(credits);
+        int room = BALANCE_W - 22;
+        // Shrinks rather than overflows: at the cap the figure is wider than the well.
+        float scale = Math.min(1.0F, room / (float) font.width(figure));
+        graphics.pose().pushPose();
+        graphics.pose().translate(x + 17, y + 16, 0);
+        graphics.pose().scale(scale, scale, 1.0F);
+        graphics.drawString(font, figure, 0, 0, GOLD, false);
+        graphics.pose().popPose();
     }
 
     @Override
     public void render(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         super.render(graphics, mouseX, mouseY, partialTick);
-        List<Tile> tiles = tiles();
-        Tile hovered = null;
-        for (int i = 0; i < tiles.size(); i++) {
-            Tile tile = tiles.get(i);
-            int x = leftPos + tileX(i, tiles.size());
-            int y = topPos + TILE_Y;
-            boolean over = isOver(mouseX, mouseY, x, y, TILE, TILE);
-            Panels.recess(graphics, x, y, TILE, TILE);
-            if (over && tile.enabled()) {
-                graphics.fill(x + 1, y + 1, x + TILE - 1, y + TILE - 1, Panels.HOVER_WASH);
-            }
-            graphics.renderItem(tile.icon(), x + (TILE - 16) / 2, y + (TILE - 16) / 2);
-            graphics.renderItemDecorations(font, tile.icon(), x + (TILE - 16) / 2, y + (TILE - 16) / 2);
-            if (!tile.enabled()) {
-                graphics.fill(x + 1, y + 1, x + TILE - 1, y + TILE - 1, 0x80555555);
-            }
-            drawTileLabel(graphics, tile.label(), x + TILE / 2, topPos + TILE_LABEL_Y);
-            if (over) {
-                hovered = tile;
-            }
+        switch (tab) {
+            case DEPOSIT -> renderMove(graphics, mouseX, mouseY, true);
+            case WITHDRAW -> renderMove(graphics, mouseX, mouseY, false);
+            case RECENT -> renderRecent(graphics);
+            case INFO -> renderInfo(graphics);
         }
-        if (mode != Mode.MAIN) {
-            long typed = typed();
-            boolean deposit = mode == Mode.DEPOSIT;
-            boolean enabled = typed > 0 && typed <= (deposit ? menu.free() : menu.savings());
-            drawConfirm(graphics, deposit, enabled, mouseX, mouseY);
-        } else {
-            drawHint(graphics);
-        }
-        if (hovered != null) {
-            graphics.renderComponentTooltip(font, hovered.tooltip(), mouseX, mouseY);
-        } else {
-            renderTooltip(graphics, mouseX, mouseY);
-        }
+        renderTabTooltip(graphics, mouseX, mouseY);
     }
 
     @Override
     protected void renderLabels(@NotNull GuiGraphics graphics, int mouseX, int mouseY) {
-        Component heading = switch (mode) {
-            case MAIN -> title;
-            case DEPOSIT -> title.copy().append(" · ").append(text("deposit"));
-            case WITHDRAW -> title.copy().append(" · ").append(text("withdraw"));
-        };
-        graphics.drawString(font, heading, titleLabelX, titleLabelY, Panels.LABEL_TEXT, false);
-        drawPocket(graphics, MARGIN, text("purse"), menu.purse(), PURSE_TEXT);
-        drawPocket(graphics, RIGHT_X, text("savings"), menu.savings(), SAVINGS_TEXT);
-        // Only when it explains something: a purse whose "all" moves less than
-        // it shows, because part of it is riding on a table.
-        long promised = menu.purse() - menu.free();
-        if (promised > 0) {
-            graphics.drawString(font, text("promised", CreditFormat.of(promised)),
-                    MARGIN + 3, POCKET_Y + POCKET_H - 9, Panels.LABEL_TEXT, false);
+        graphics.drawString(font, title, titleLabelX, titleLabelY, TEXT, false);
+        for (Tab each : Tab.values()) {
+            Component label = text("tile." + each.key);
+            int top = TAB_Y + each.ordinal() * TAB_H;
+            graphics.pose().pushPose();
+            graphics.pose().translate(TAB_X + TAB_W / 2.0F, top + 23, 0);
+            float scale = Math.min(0.75F, (TAB_W - 4) / (float) font.width(label));
+            graphics.pose().scale(scale, scale, 1.0F);
+            graphics.drawString(font, label, -font.width(label) / 2, 0, each == tab ? TEXT : MUTED, false);
+            graphics.pose().popPose();
         }
     }
 
-    private void drawPocket(GuiGraphics graphics, int x, Component label, long credits, int color) {
-        graphics.drawString(font, label, x + 3, POCKET_Y + 3, Panels.LABEL_TEXT, false);
-        String figure = CreditFormat.of(credits);
-        // Shrinks rather than overflows: at the cap the figure is wider than the well.
-        float scale = Math.min(1.0F, (COLUMN_W - 6) / (float) font.width(figure));
-        graphics.pose().pushPose();
-        graphics.pose().translate(x + 3, POCKET_Y + 13, 0);
-        graphics.pose().scale(scale, scale, 1.0F);
-        graphics.drawString(font, figure, 0, 0, color, false);
-        graphics.pose().popPose();
-    }
+    /** Deposit or withdraw: a card per share with what it comes to, then a typed amount. */
+    private void renderMove(GuiGraphics graphics, int mouseX, int mouseY, boolean deposit) {
+        long of = deposit ? menu.free() : menu.savings();
+        drawPageTitle(graphics, text(deposit ? "deposit_lore" : "withdraw_lore"));
 
-    private void drawTileLabel(GuiGraphics graphics, Component label, int centerX, int y) {
-        graphics.pose().pushPose();
-        graphics.pose().translate(centerX, y, 0);
-        graphics.pose().scale(TILE_LABEL_SCALE, TILE_LABEL_SCALE, 1.0F);
-        graphics.drawString(font, label, -font.width(label) / 2, 0, Panels.LABEL_TEXT, false);
-        graphics.pose().popPose();
-    }
+        List<Share> shares = deposit ? DEPOSIT_SHARES : WITHDRAW_SHARES;
+        int cardW = (INNER_W - PAD * (shares.size() - 1)) / shares.size();
+        for (int i = 0; i < shares.size(); i++) {
+            Share share = shares.get(i);
+            long sum = CreditMath.percentOf(of, share.percent(), RoundingMode.FLOOR);
+            int x = leftPos + INNER_X + i * (cardW + PAD);
+            int y = topPos + BODY_Y;
+            boolean enabled = sum > 0;
+            boolean hovered = enabled && isOver(mouseX, mouseY, x, y, cardW, CARD_H);
+            graphics.fill(x, y, x + cardW, y + CARD_H, enabled ? (hovered ? CARD_HOVER : CARD) : DISABLED);
+            graphics.fill(x, y + CARD_H - 2, x + cardW, y + CARD_H,
+                    enabled ? (deposit ? DEPOSIT : WITHDRAW) : DISABLED);
+            Component name = text(share.key());
+            graphics.drawString(font, name, x + (cardW - font.width(name)) / 2, y + 5,
+                    enabled ? TEXT : MUTED, false);
+            String figure = CreditFormat.of(sum);
+            graphics.drawString(font, figure, x + (cardW - font.width(figure)) / 2, y + 16,
+                    enabled ? GOLD : MUTED, false);
+        }
 
-    private void drawConfirm(GuiGraphics graphics, boolean deposit, boolean enabled, int mouseX, int mouseY) {
-        int x = leftPos + MARGIN + INNER_W - CONFIRM_W;
+        long typed = typed();
+        boolean enabled = typed > 0 && typed <= of;
+        int x = leftPos + INNER_X + INNER_W - CONFIRM_W;
         int y = topPos + ROW_Y;
         boolean hovered = enabled && isOver(mouseX, mouseY, x, y, CONFIRM_W, ROW_H);
-        graphics.fill(x - 1, y - 1, x + CONFIRM_W + 1, y + ROW_H + 1, Panels.OUTLINE);
-        int face = enabled ? (deposit ? DEPOSIT_FACE : WITHDRAW_FACE) : DISABLED_FACE;
-        graphics.fill(x, y, x + CONFIRM_W, y + ROW_H, hovered ? face + 0x00191919 : face);
+        int face = enabled ? (deposit ? DEPOSIT : WITHDRAW) : DISABLED;
+        graphics.fill(x, y, x + CONFIRM_W, y + ROW_H, hovered ? face + 0x00181818 : face);
         Component label = text(deposit ? "deposit" : "withdraw");
-        graphics.drawString(font, label, x + (CONFIRM_W - font.width(label)) / 2, y + TEXT_Y,
-                enabled ? 0xFFFFFFFF : 0xFF9A9A9A, false);
+        graphics.drawString(font, label, x + (CONFIRM_W - font.width(label)) / 2, y + (ROW_H - 8) / 2,
+                enabled ? TEXT : MUTED, false);
+        if (typed > 0) {
+            // What "1.5k" came to, so nobody deposits a thousand times what they meant.
+            Component reads = text("amount_reads", CreditFormat.of(typed));
+            graphics.drawString(font, reads, leftPos + INNER_X, topPos + ROW_Y + ROW_H + 3, MUTED, false);
+        }
+
+        List<Component> footer = new ArrayList<>();
+        long promised = menu.purse() - menu.free();
+        if (deposit && promised > 0) {
+            footer.add(text("promised", CreditFormat.of(promised)));
+        }
+        BankStatePayload state = ClientBankState.state();
+        if (deposit && state != null && !state.tranches().isEmpty()) {
+            InterestTranches.Tranche first = state.tranches().getFirst();
+            footer.add(text("deposit_interest", percent(first.basisPoints()), CreditFormat.of(first.upTo())));
+            footer.add(text("interest_in", duration(ClientBankState.millisUntilInterest())));
+        }
+        drawLines(graphics, footer, FOOTER_Y + LINE);
     }
 
-    /** On the main page the row under the tiles says when interest is next paid, if it is. */
-    private void drawHint(GuiGraphics graphics) {
-        long until = ClientBankState.millisUntilInterest();
+    private void renderRecent(GuiGraphics graphics) {
+        drawPageTitle(graphics, text("tile.recent"));
         BankStatePayload state = ClientBankState.state();
-        if (until < 0 || state == null || state.tranches().isEmpty()) {
+        List<BankMovement> recent = state == null ? List.of() : state.recent();
+        if (recent.isEmpty()) {
+            graphics.drawString(font, text("recent.none"), leftPos + INNER_X, topPos + BODY_Y, MUTED, false);
             return;
         }
-        Component hint = text("interest_in", duration(until));
-        graphics.drawString(font, hint, leftPos + (WIDTH - font.width(hint)) / 2, topPos + ROW_Y + TEXT_Y,
-                Panels.LABEL_TEXT, false);
+        long now = System.currentTimeMillis();
+        int y = topPos + BODY_Y;
+        // Newest first, the way a statement is read.
+        for (int i = recent.size() - 1; i >= 0 && y + 8 <= topPos + CONTENT_B; i--) {
+            BankMovement movement = recent.get(i);
+            boolean out = movement.kind() == BankMovement.Kind.WITHDRAWAL;
+            String sign = out ? "- " : "+ ";
+            int color = out ? 0xFFE05555 : 0xFF55D06A;
+            String figure = sign + CreditFormat.of(movement.amount());
+            graphics.drawString(font, figure, leftPos + INNER_X, y, color, false);
+            Component what = text("recent." + movement.kind().name().toLowerCase(Locale.ROOT),
+                    duration(now - movement.time()));
+            graphics.drawString(font, what, leftPos + INNER_X + INNER_W - font.width(what), y, MUTED, false);
+            y += LINE;
+        }
     }
 
-    private static int tileX(int index, int count) {
-        int pitch = INNER_W / count;
-        return MARGIN + index * pitch + (pitch - TILE) / 2;
+    private void renderInfo(GuiGraphics graphics) {
+        drawPageTitle(graphics, text("tile.info"));
+        List<Component> lines = new ArrayList<>();
+        lines.add(text("info.safe"));
+        BankStatePayload state = ClientBankState.state();
+        if (state != null) {
+            lines.add(state.deathLossPercent() > 0
+                    ? text(state.combatOnly() ? "info.death_combat" : "info.death", state.deathLossPercent())
+                    : text("info.no_death"));
+            if (state.tranches().isEmpty()) {
+                lines.add(text("info.interest_off"));
+            } else {
+                lines.add(text("info.interest_every", duration(state.interestPeriod())));
+                lines.add(text("interest_in", duration(ClientBankState.millisUntilInterest()))
+                        .withStyle(ChatFormatting.AQUA));
+                long from = 0;
+                for (InterestTranches.Tranche tranche : state.tranches()) {
+                    lines.add((from == 0
+                            ? text("info.tranche_first", CreditFormat.of(tranche.upTo()), percent(tranche.basisPoints()))
+                            : text("info.tranche_next", CreditFormat.of(from), CreditFormat.of(tranche.upTo()),
+                            percent(tranche.basisPoints())))
+                            .withStyle(ChatFormatting.YELLOW));
+                    from = tranche.upTo();
+                }
+                lines.add(text("info.max_interest", CreditFormat.of(new InterestTranches(state.tranches()).maxInterest()),
+                        CreditFormat.of(from)));
+            }
+        }
+        drawLines(graphics, lines, BODY_Y);
+    }
+
+    private void drawPageTitle(GuiGraphics graphics, Component title) {
+        graphics.drawString(font, title, leftPos + INNER_X, topPos + PAGE_Y, TEXT, false);
+    }
+
+    /** Lines wrapped to the page, from {@code fromY} down, stopping at its foot. */
+    private void drawLines(GuiGraphics graphics, List<Component> lines, int fromY) {
+        int y = topPos + fromY;
+        for (Component line : lines) {
+            for (FormattedCharSequence wrapped : font.split(line, INNER_W)) {
+                if (y + 8 > topPos + CONTENT_B) {
+                    return;
+                }
+                graphics.drawString(font, wrapped, leftPos + INNER_X, y, MUTED, false);
+                y += LINE;
+            }
+        }
+    }
+
+    private void renderTabTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
+        for (Tab each : Tab.values()) {
+            int top = topPos + TAB_Y + each.ordinal() * TAB_H;
+            if (each != tab && isOver(mouseX, mouseY, leftPos + TAB_X, top, TAB_W, TAB_H - 2)) {
+                graphics.renderTooltip(font, text("tile." + each.key), mouseX, mouseY);
+                return;
+            }
+        }
+        renderTooltip(graphics, mouseX, mouseY);
     }
 
     // --- Input -------------------------------------------------------------------------------
@@ -399,25 +390,37 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         int x = (int) mouseX;
         int y = (int) mouseY;
-        List<Tile> tiles = tiles();
-        for (int i = 0; i < tiles.size(); i++) {
-            Tile tile = tiles.get(i);
-            if (isOver(x, y, leftPos + tileX(i, tiles.size()), topPos + TILE_Y, TILE, TILE)) {
-                if (tile.enabled()) {
+        for (Tab each : Tab.values()) {
+            if (isOver(x, y, leftPos + TAB_X, topPos + TAB_Y + each.ordinal() * TAB_H, TAB_W, TAB_H - 2)) {
+                if (each != tab) {
                     playClick();
-                    tile.action().run();
+                    select(each);
                 }
                 return true;
             }
         }
-        if (mode != Mode.MAIN) {
-            if (isOver(x, y, leftPos + MARGIN, topPos + ROW_Y, INNER_W - CONFIRM_W - 4, ROW_H)) {
+        if (tab == Tab.DEPOSIT || tab == Tab.WITHDRAW) {
+            boolean deposit = tab == Tab.DEPOSIT;
+            long of = deposit ? menu.free() : menu.savings();
+            List<Share> shares = deposit ? DEPOSIT_SHARES : WITHDRAW_SHARES;
+            int cardW = (INNER_W - PAD * (shares.size() - 1)) / shares.size();
+            for (int i = 0; i < shares.size(); i++) {
+                Share share = shares.get(i);
+                if (isOver(x, y, leftPos + INNER_X + i * (cardW + PAD), topPos + BODY_Y, cardW, CARD_H)) {
+                    if (CreditMath.percentOf(of, share.percent(), RoundingMode.FLOOR) > 0) {
+                        playClick();
+                        send(BankActionPayload.share(deposit, share.percent()));
+                    }
+                    return true;
+                }
+            }
+            if (isOver(x, y, leftPos + INNER_X, topPos + ROW_Y, INNER_W - CONFIRM_W - 4, ROW_H)) {
                 setFocused(amount);
                 amount.setFocused(true);
                 return true;
             }
             amount.setFocused(false);
-            if (isOver(x, y, leftPos + MARGIN + INNER_W - CONFIRM_W, topPos + ROW_Y, CONFIRM_W, ROW_H)) {
+            if (isOver(x, y, leftPos + INNER_X + INNER_W - CONFIRM_W, topPos + ROW_Y, CONFIRM_W, ROW_H)) {
                 confirm();
                 return true;
             }
@@ -427,7 +430,7 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
 
     private void confirm() {
         long typed = typed();
-        boolean deposit = mode == Mode.DEPOSIT;
+        boolean deposit = tab == Tab.DEPOSIT;
         if (typed <= 0 || typed > (deposit ? menu.free() : menu.savings())) {
             return;
         }
@@ -453,11 +456,6 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
                 return true;
             }
         }
-        if (keyCode == InputConstants.KEY_ESCAPE && mode != Mode.MAIN) {
-            // Back a page first, the way SkyBlock's arrow does; Escape again closes.
-            setMode(Mode.MAIN);
-            return true;
-        }
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
@@ -471,27 +469,16 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
         }
     }
 
-    /** What the field says, or zero for nothing usable. */
+    /** What the field says, "1.5k" and "2m" included, or zero for nothing usable. */
     private long typed() {
-        if (amount == null || amount.getValue().isEmpty()) {
-            return 0;
-        }
-        try {
-            long value = Long.parseLong(amount.getValue());
-            return value <= CreditAccount.MAX_BALANCE ? value : 0;
-        } catch (NumberFormatException e) {
-            return 0;
-        }
+        long typed = amount == null ? 0 : CreditFormat.parse(amount.getValue()).orElse(0);
+        return typed <= CreditAccount.MAX_BALANCE ? typed : 0;
     }
 
     // --- Text --------------------------------------------------------------------------------
 
     private static MutableComponent text(String key, Object... args) {
         return Component.translatable("economycore.my_bank." + key, args);
-    }
-
-    private static Component gold(long credits) {
-        return Component.literal(CreditFormat.of(credits)).withStyle(ChatFormatting.GOLD);
     }
 
     /** A rate in basis points as a percentage: 200 is "2", 125 is "1.25". */
