@@ -4,11 +4,13 @@ import com.github.arrivedbog593.economycore.EconomyCore;
 import com.github.arrivedbog593.economycore.platform.registry.EconomyEntities;
 import com.github.arrivedbog593.economycore.platform.registry.EconomyMenus;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
+import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
@@ -49,6 +51,12 @@ public final class EconomyClientSetup {
     public static void registerGuiLayers(RegisterGuiLayersEvent event) {
         event.registerAbove(VanillaGuiLayers.SCOREBOARD_SIDEBAR,
                 ResourceLocation.fromNamespaceAndPath(EconomyCore.MOD_ID, "purse"), PurseHud::render);
+    }
+
+    /** A change of resource packs may darken or lighten vanilla's windows, which AUTO follows. */
+    @SubscribeEvent
+    public static void registerReloadListeners(RegisterClientReloadListenersEvent event) {
+        event.registerReloadListener((ResourceManagerReloadListener) manager -> Palette.forgetPacks());
     }
 
     /** Forgets the last server's purse, so it is not shown on the next one before that one says. */

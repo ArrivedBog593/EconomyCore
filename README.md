@@ -56,6 +56,10 @@ it will do. Switching `/bank` off in the config also closes `/credits deposit` a
 Each player sees their purse and their bank at the right of the screen, above any
 scoreboard sidebar. It can be hidden in `config/economycore-client.toml`.
 
+The mod's windows come light, like vanilla's, or dark. `ui.theme` in the same file picks one; the
+default, `AUTO`, goes dark when your resource packs make Minecraft's own windows dark, as a
+dark-mode pack does. The rest of Minecraft is darkened by such a pack, not by this mod.
+
 The bank can pay **interest**, off by default: every so many real hours, to everyone with
 savings, by tranches, as SkyBlock does (2% on the first 10,000,000 and 1% up to 15,000,000
 unless the config says otherwise). Every credit it pays is new money.

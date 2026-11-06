@@ -24,13 +24,23 @@ public final class Panels {
     private Panels() {
     }
 
+    /** The one color both themes share: the black line round everything. */
     public static final int OUTLINE = 0xFF000000;
-    public static final int PANEL = 0xFFC6C6C6;
-    public static final int BEVEL_LIGHT = 0xFFFFFFFF;
-    public static final int BEVEL_DARK = 0xFF555555;
-    public static final int SLOT_FILL = 0xFF8B8B8B;
-    public static final int SLOT_DARK = 0xFF373737;
-    public static final int LABEL_TEXT = 0xFF404040;
+
+    /** Text on the panel, dark on light and light on dark. */
+    public static int label() {
+        return Palette.current().label();
+    }
+
+    /** A balance, or credits coming in. */
+    public static int positive() {
+        return Palette.current().positive();
+    }
+
+    /** A shortfall, or credits going out. */
+    public static int negative() {
+        return Palette.current().negative();
+    }
 
     /** Translucent whitewash over a hovered button. */
     public static final int HOVER_WASH = 0x30FFFFFF;
@@ -50,6 +60,10 @@ public final class Panels {
      * light bevel, the fill, two of dark bevel, one of black.
      */
     public static void panel(GuiGraphics g, int x0, int y0, int x1, int y1) {
+        Palette palette = Palette.current();
+        int body = palette.panel();
+        int lit = palette.bevelLight();
+        int shade = palette.bevelDark();
         for (int y = y0; y < y1; y++) {
             int dTop = y - y0;
             int dBot = y1 - 1 - y;
@@ -72,34 +86,38 @@ public final class Panels {
             if (dTop == 0 || dBot == 0) {
                 g.fill(innerL, y, innerR, y + 1, OUTLINE);
             } else if (dTop == 1) {
-                g.fill(innerL, y, innerR, y + 1, BEVEL_LIGHT);
+                g.fill(innerL, y, innerR, y + 1, lit);
             } else if (dBot == 1) {
-                g.fill(innerL, y, innerR, y + 1, BEVEL_DARK);
+                g.fill(innerL, y, innerR, y + 1, shade);
             } else if (dTop == 2) {
-                g.fill(innerL, y, innerR - 1, y + 1, BEVEL_LIGHT);
-                g.fill(innerR - 1, y, innerR, y + 1, PANEL);
+                g.fill(innerL, y, innerR - 1, y + 1, lit);
+                g.fill(innerR - 1, y, innerR, y + 1, body);
             } else if (dBot == 2) {
-                g.fill(innerL, y, innerL + 1, y + 1, PANEL);
-                g.fill(innerL + 1, y, innerR, y + 1, BEVEL_DARK);
+                g.fill(innerL, y, innerL + 1, y + 1, body);
+                g.fill(innerL + 1, y, innerR, y + 1, shade);
             } else {
                 int lw = dTop == 3 ? 3 : BEVEL;
                 int rw = dBot == 3 ? 3 : BEVEL;
                 int fillL = Math.min(innerL + lw, innerR);
                 int fillR = Math.max(innerR - rw, fillL);
-                g.fill(innerL, y, fillL, y + 1, BEVEL_LIGHT);
-                g.fill(fillL, y, fillR, y + 1, PANEL);
-                g.fill(fillR, y, innerR, y + 1, BEVEL_DARK);
+                g.fill(innerL, y, fillL, y + 1, lit);
+                g.fill(fillL, y, fillR, y + 1, body);
+                g.fill(fillR, y, innerR, y + 1, shade);
             }
         }
     }
 
     /** A sunken well. Each bevel is a continuous L that owns its own corner. */
     public static void recess(GuiGraphics g, int x, int y, int w, int h) {
-        g.fill(x, y, x + w, y + h, SLOT_FILL);
-        g.fill(x, y, x + w - 1, y + 1, SLOT_DARK);
-        g.fill(x, y + 1, x + 1, y + h - 1, SLOT_DARK);
-        g.fill(x + 1, y + h - 1, x + w, y + h, BEVEL_LIGHT);
-        g.fill(x + w - 1, y + 1, x + w, y + h - 1, BEVEL_LIGHT);
+        Palette palette = Palette.current();
+        int well = palette.slotFill();
+        int wellShade = palette.slotDark();
+        int lit = palette.bevelLight();
+        g.fill(x, y, x + w, y + h, well);
+        g.fill(x, y, x + w - 1, y + 1, wellShade);
+        g.fill(x, y + 1, x + 1, y + h - 1, wellShade);
+        g.fill(x + 1, y + h - 1, x + w, y + h, lit);
+        g.fill(x + w - 1, y + 1, x + w, y + h - 1, lit);
     }
 
     /**
@@ -112,11 +130,14 @@ public final class Panels {
      */
     public static void button(GuiGraphics g, int x, int y, int w, int h,
                               int face, boolean hovered) {
+        Palette palette = Palette.current();
+        int lit = palette.bevelLight();
+        int shade = palette.bevelDark();
         g.fill(x, y, x + w, y + h, face);
-        g.fill(x, y, x + w - 1, y + 1, BEVEL_LIGHT);
-        g.fill(x, y + 1, x + 1, y + h - 1, BEVEL_LIGHT);
-        g.fill(x + 1, y + h - 1, x + w, y + h, BEVEL_DARK);
-        g.fill(x + w - 1, y + 1, x + w, y + h - 1, BEVEL_DARK);
+        g.fill(x, y, x + w - 1, y + 1, lit);
+        g.fill(x, y + 1, x + 1, y + h - 1, lit);
+        g.fill(x + 1, y + h - 1, x + w, y + h, shade);
+        g.fill(x + w - 1, y + 1, x + w, y + h - 1, shade);
         if (hovered) {
             g.fill(x + 1, y + 1, x + w - 1, y + h - 1, HOVER_WASH);
         }

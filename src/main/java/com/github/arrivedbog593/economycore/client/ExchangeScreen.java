@@ -367,9 +367,9 @@ public class ExchangeScreen extends AbstractContainerScreen<ExchangeMenu> {
 
     @Override
     protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
-        graphics.drawString(font, title, titleLabelX, titleLabelY, Panels.LABEL_TEXT, false);
+        graphics.drawString(font, title, titleLabelX, titleLabelY, Panels.label(), false);
         graphics.drawString(font, playerInventoryTitle,
-                inventoryLabelX, inventoryLabelY, Panels.LABEL_TEXT, false);
+                inventoryLabelX, inventoryLabelY, Panels.label(), false);
         // Spendable first, then the whole balance: the credits are still
         // theirs, they are just promised to a round that has not settled.
         graphics.drawString(font, menu.committed() > 0
@@ -377,7 +377,7 @@ public class ExchangeScreen extends AbstractContainerScreen<ExchangeMenu> {
                         format(menu.spendable()), format(menu.balance()))
                         : Component.translatable("economycore.exchange.balance",
                         format(menu.balance())),
-                GRID_X, BALANCE_Y, 0x2E7D32, false);
+                GRID_X, BALANCE_Y, Panels.positive(), false);
     }
 
     private void renderCatalog(GuiGraphics graphics, int mouseX, int mouseY) {
@@ -436,11 +436,11 @@ public class ExchangeScreen extends AbstractContainerScreen<ExchangeMenu> {
         int totalRows = (entries.size() + COLUMNS - 1) / COLUMNS;
         if (scroll > 0) {
             graphics.drawString(font, "▲", leftPos + GRID_X + COLUMNS * CELL_WIDTH + 2,
-                    topPos + GRID_Y, Panels.LABEL_TEXT, false);
+                    topPos + GRID_Y, Panels.label(), false);
         }
         if (scroll + ROWS < totalRows) {
             graphics.drawString(font, "▼", leftPos + GRID_X + COLUMNS * CELL_WIDTH + 2,
-                    topPos + GRID_Y + ROWS * CELL_HEIGHT - 9, Panels.LABEL_TEXT, false);
+                    topPos + GRID_Y + ROWS * CELL_HEIGHT - 9, Panels.label(), false);
         }
     }
 
@@ -539,11 +539,11 @@ public class ExchangeScreen extends AbstractContainerScreen<ExchangeMenu> {
             }
             if (cartScroll > 0) {
                 graphics.drawString(font, "▲", leftPos + CART_X + CART_W - 7,
-                        topPos + CART_Y + 1, Panels.LABEL_TEXT, false);
+                        topPos + CART_Y + 1, Panels.label(), false);
             }
             if (cartScroll + CART_ROWS < ids.size()) {
                 graphics.drawString(font, "▼", leftPos + CART_X + CART_W - 7,
-                        topPos + CART_Y + CART_ROWS * CART_ROW_H - 9, Panels.LABEL_TEXT, false);
+                        topPos + CART_Y + CART_ROWS * CART_ROW_H - 9, Panels.label(), false);
             }
         }
 
@@ -554,7 +554,7 @@ public class ExchangeScreen extends AbstractContainerScreen<ExchangeMenu> {
                 ? Component.translatable("economycore.cart.unavailable")
                 : Component.translatable("economycore.cart.total", format(total));
         graphics.drawString(font, totalLine, leftPos + CART_X, topPos + TOTAL_Y,
-                total < 0 || total > menu.spendable() ? 0xFF9C1C1C : Panels.LABEL_TEXT, false);
+                total < 0 || total > menu.spendable() ? Panels.negative() : Panels.label(), false);
 
         int buyY = topPos + BUY_Y;
         boolean stale = hasStaleQuotes();

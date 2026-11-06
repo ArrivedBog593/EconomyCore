@@ -181,9 +181,9 @@ public class AdminExchangeScreen extends AbstractContainerScreen<AdminExchangeMe
 
     @Override
     protected void renderLabels(@NotNull GuiGraphics graphics, int mouseX, int mouseY) {
-        graphics.drawString(font, title, titleLabelX, titleLabelY, Panels.LABEL_TEXT, false);
+        graphics.drawString(font, title, titleLabelX, titleLabelY, Panels.label(), false);
         graphics.drawString(font, playerInventoryTitle,
-                inventoryLabelX, inventoryLabelY, Panels.LABEL_TEXT, false);
+                inventoryLabelX, inventoryLabelY, Panels.label(), false);
     }
 
     @Override
@@ -352,7 +352,7 @@ public class AdminExchangeScreen extends AbstractContainerScreen<AdminExchangeMe
 
     private void renderSpreadRow(GuiGraphics graphics, int mouseX, int mouseY) {
         graphics.drawString(font, Component.translatable("economycore.admin.exchange.spread"),
-                leftPos + GRID_X, topPos + SPREAD_Y + TEXT_Y, Panels.LABEL_TEXT, false);
+                leftPos + GRID_X, topPos + SPREAD_Y + TEXT_Y, Panels.label(), false);
 
         boolean typing = spread != null && spread.isFocused();
         drawControl(graphics, leftPos + SPREAD_X, topPos + SPREAD_Y, SPREAD_W,

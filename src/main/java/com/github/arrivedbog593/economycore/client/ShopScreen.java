@@ -369,9 +369,9 @@ public class ShopScreen extends AbstractContainerScreen<ShopMenu> {
 
     @Override
     protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
-        graphics.drawString(font, title, titleLabelX, titleLabelY, 0x404040, false);
+        graphics.drawString(font, title, titleLabelX, titleLabelY, Panels.label(), false);
         graphics.drawString(font, playerInventoryTitle,
-                inventoryLabelX, inventoryLabelY, 0x404040, false);
+                inventoryLabelX, inventoryLabelY, Panels.label(), false);
 
         // Two numbers when part of the balance is spoken for, and the
         // spendable one first: that is the figure the prices below are being
@@ -380,7 +380,7 @@ public class ShopScreen extends AbstractContainerScreen<ShopMenu> {
                 ? Component.translatable("economycore.shop.balance_committed",
                 format(menu.spendable()), format(menu.balance()))
                 : Component.translatable("economycore.shop.balance", format(menu.balance()));
-        graphics.drawString(font, balance, GRID_X, BALANCE_Y, 0x2E7D32, false);
+        graphics.drawString(font, balance, GRID_X, BALANCE_Y, Panels.positive(), false);
     }
 
     private void renderCatalog(GuiGraphics graphics, int mouseX, int mouseY) {
@@ -456,7 +456,7 @@ public class ShopScreen extends AbstractContainerScreen<ShopMenu> {
         if (scroll > 0) {
             graphics.drawString(font, "▲",
                     leftPos + GRID_X + COLUMNS * CELL_WIDTH + 2, topPos + GRID_Y,
-                    Panels.LABEL_TEXT, false);
+                    Panels.label(), false);
         }
         if (scroll + ROWS < totalRows) {
             graphics.drawString(font, "▼",
@@ -464,7 +464,7 @@ public class ShopScreen extends AbstractContainerScreen<ShopMenu> {
                     // The bottom of the recess, not the top of the last row.
                     // The glyph is 8 tall, so it sits inside the well the same
                     // way the up arrow does at the other end.
-                    topPos + GRID_Y + ROWS * CELL_HEIGHT - 9, Panels.LABEL_TEXT, false);
+                    topPos + GRID_Y + ROWS * CELL_HEIGHT - 9, Panels.label(), false);
         }
     }
 
@@ -553,12 +553,12 @@ public class ShopScreen extends AbstractContainerScreen<ShopMenu> {
             }
             if (cartScroll > 0) {
                 graphics.drawString(font, "▲", leftPos + CART_X + CART_W - 7,
-                        topPos + CART_Y + 1, Panels.LABEL_TEXT, false);
+                        topPos + CART_Y + 1, Panels.label(), false);
             }
             if (cartScroll + CART_ROWS < numbers.size()) {
                 graphics.drawString(font, "▼", leftPos + CART_X + CART_W - 7,
                         topPos + CART_Y + CART_ROWS * CART_ROW_H - 9,
-                        Panels.LABEL_TEXT, false);
+                        Panels.label(), false);
             }
         }
 
@@ -570,7 +570,7 @@ public class ShopScreen extends AbstractContainerScreen<ShopMenu> {
                 ? Component.translatable("economycore.cart.unavailable")
                 : Component.translatable("economycore.cart.total", format(total));
         int totalColor = total < 0 || total > menu.spendable()
-                ? 0xFF9C1C1C : Panels.LABEL_TEXT;
+                ? Panels.negative() : Panels.label();
         graphics.drawString(font, totalLine, leftPos + CART_X, topPos + TOTAL_Y,
                 totalColor, false);
 

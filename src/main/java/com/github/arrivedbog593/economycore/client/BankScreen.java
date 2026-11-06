@@ -102,23 +102,10 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
     private static final int FOOTER_Y = ROW_Y + ROW_H + 8;
     private static final int LINE = 10;
 
-    // The dark room.
-    private static final int FRAME = 0xFF0E0E10;
-    private static final int PANEL = 0xFF232327;
-    private static final int PANEL_LIGHT = 0xFF34343A;
-    private static final int PANEL_DARK = 0xFF16161A;
-    private static final int PAGE = 0xFF2C2C31;
-    private static final int WELL = 0xFF1B1B1F;
-    private static final int CARD = 0xFF38383F;
-    private static final int CARD_HOVER = 0xFF46464F;
-    private static final int RULE = 0xFF3E3E46;
-    private static final int TEXT = 0xFFE6E6EA;
-    private static final int MUTED = 0xFF9A9AA4;
-    private static final int GOLD = 0xFFFFC94A;
+    // Colors that mean the same in both themes; the rest come from the {@link Palette}.
     private static final int ACCENT = 0xFFD4AF37;
     private static final int DEPOSIT = 0xFF2E8B3E;
     private static final int WITHDRAW = 0xFFB07418;
-    private static final int DISABLED = 0xFF3A3A40;
 
     private static final List<Share> DEPOSIT_SHARES = List.of(
             new Share("share.all", 100), new Share("share.half", 50));
@@ -144,7 +131,7 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
         amount = new EditBox(font, leftPos + INNER_X + 4, topPos + ROW_Y + (ROW_H - 8) / 2,
                 INNER_W - CONFIRM_W - 12, 9, text("amount"));
         amount.setBordered(false);
-        amount.setTextColor(TEXT);
+        amount.setTextColor(ink().text());
         amount.setHint(text("amount_hint").withStyle(ChatFormatting.DARK_GRAY));
         amount.setFilter(text -> text.isEmpty() || text.matches("\\d{0,13}(\\.\\d{0,2})?[kKmM]?"));
         amount.setValue(carried);
@@ -171,12 +158,12 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
         int x = leftPos;
         int y = topPos;
         // Frame and a one-pixel bevel, as vanilla's panel has, in the dark.
-        graphics.fill(x, y, x + WIDTH, y + HEIGHT, FRAME);
-        graphics.fill(x + 1, y + 1, x + WIDTH - 1, y + HEIGHT - 1, PANEL_LIGHT);
-        graphics.fill(x + 2, y + 2, x + WIDTH - 1, y + HEIGHT - 1, PANEL_DARK);
-        graphics.fill(x + 2, y + 2, x + WIDTH - 2, y + HEIGHT - 2, PANEL);
+        graphics.fill(x, y, x + WIDTH, y + HEIGHT, ink().frame());
+        graphics.fill(x + 1, y + 1, x + WIDTH - 1, y + HEIGHT - 1, ink().bevelLight());
+        graphics.fill(x + 2, y + 2, x + WIDTH - 1, y + HEIGHT - 1, ink().bevelDark());
+        graphics.fill(x + 2, y + 2, x + WIDTH - 2, y + HEIGHT - 2, ink().panel());
 
-        graphics.fill(x + CONTENT_X, y + CONTENT_Y, x + CONTENT_R, y + CONTENT_B, PAGE);
+        graphics.fill(x + CONTENT_X, y + CONTENT_Y, x + CONTENT_R, y + CONTENT_B, ink().page());
 
         for (Tab each : Tab.values()) {
             int top = y + TAB_Y + each.ordinal() * TAB_H;
@@ -184,10 +171,10 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
             boolean hovered = isOver(mouseX, mouseY, x + TAB_X, top, TAB_W, TAB_H - 2);
             if (selected) {
                 // Joined to the page, with a strip of brass where it opens onto it.
-                graphics.fill(x + TAB_X, top, x + CONTENT_X, top + TAB_H - 2, PAGE);
+                graphics.fill(x + TAB_X, top, x + CONTENT_X, top + TAB_H - 2, ink().page());
                 graphics.fill(x + TAB_X, top, x + TAB_X + 2, top + TAB_H - 2, ACCENT);
             } else if (hovered) {
-                graphics.fill(x + TAB_X, top, x + CONTENT_X - 2, top + TAB_H - 2, PANEL_LIGHT);
+                graphics.fill(x + TAB_X, top, x + CONTENT_X - 2, top + TAB_H - 2, ink().bevelLight());
             }
             graphics.blit(each.icon, x + TAB_X + (TAB_W - 16) / 2, top + 4, 0, 0, 16, 16, 16, 16);
         }
@@ -195,16 +182,16 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
         // The two balances, in wells, and a rule under them.
         drawBalance(graphics, x + INNER_X, y + BALANCE_Y, text("purse"), menu.purse());
         drawBalance(graphics, x + INNER_X + BALANCE_W + PAD, y + BALANCE_Y, text("savings"), menu.savings());
-        graphics.fill(x + INNER_X, y + RULE_Y, x + INNER_X + INNER_W, y + RULE_Y + 1, RULE);
+        graphics.fill(x + INNER_X, y + RULE_Y, x + INNER_X + INNER_W, y + RULE_Y + 1, ink().rule());
 
         if (amount.visible) {
-            graphics.fill(x + INNER_X, y + ROW_Y, x + INNER_X + INNER_W - CONFIRM_W - 4, y + ROW_Y + ROW_H, WELL);
+            graphics.fill(x + INNER_X, y + ROW_Y, x + INNER_X + INNER_W - CONFIRM_W - 4, y + ROW_Y + ROW_H, ink().well());
         }
     }
 
     private void drawBalance(GuiGraphics graphics, int x, int y, Component label, long credits) {
-        graphics.fill(x, y, x + BALANCE_W, y + BALANCE_H, WELL);
-        graphics.drawString(font, label, x + 5, y + 4, MUTED, false);
+        graphics.fill(x, y, x + BALANCE_W, y + BALANCE_H, ink().well());
+        graphics.drawString(font, label, x + 5, y + 4, ink().muted(), false);
         graphics.blit(COIN, x + 5, y + 15, 0, 0, 9, 9, 9, 9);
         String figure = CreditFormat.of(credits);
         int room = BALANCE_W - 22;
@@ -213,7 +200,7 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
         graphics.pose().pushPose();
         graphics.pose().translate(x + 17, y + 16, 0);
         graphics.pose().scale(scale, scale, 1.0F);
-        graphics.drawString(font, figure, 0, 0, GOLD, false);
+        graphics.drawString(font, figure, 0, 0, ink().gold(), false);
         graphics.pose().popPose();
     }
 
@@ -231,7 +218,7 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
 
     @Override
     protected void renderLabels(@NotNull GuiGraphics graphics, int mouseX, int mouseY) {
-        graphics.drawString(font, title, titleLabelX, titleLabelY, TEXT, false);
+        graphics.drawString(font, title, titleLabelX, titleLabelY, ink().text(), false);
         for (Tab each : Tab.values()) {
             Component label = text("tile." + each.key);
             int top = TAB_Y + each.ordinal() * TAB_H;
@@ -239,7 +226,7 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
             graphics.pose().translate(TAB_X + TAB_W / 2.0F, top + 23, 0);
             float scale = Math.min(0.75F, (TAB_W - 4) / (float) font.width(label));
             graphics.pose().scale(scale, scale, 1.0F);
-            graphics.drawString(font, label, -font.width(label) / 2, 0, each == tab ? TEXT : MUTED, false);
+            graphics.drawString(font, label, -font.width(label) / 2, 0, each == tab ? ink().text() : ink().muted(), false);
             graphics.pose().popPose();
         }
     }
@@ -258,20 +245,20 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
             int y = topPos + BODY_Y;
             boolean enabled = sum > 0;
             boolean hovered = enabled && isOver(mouseX, mouseY, x, y, cardW, CARD_H);
-            graphics.fill(x, y, x + cardW, y + CARD_H, enabled ? (hovered ? CARD_HOVER : CARD) : DISABLED);
+            graphics.fill(x, y, x + cardW, y + CARD_H, enabled ? (hovered ? ink().cardHover() : ink().card()) : ink().disabled());
             graphics.fill(x, y + CARD_H - 2, x + cardW, y + CARD_H,
-                    enabled ? (deposit ? DEPOSIT : WITHDRAW) : DISABLED);
+                    enabled ? (deposit ? DEPOSIT : WITHDRAW) : ink().disabled());
             // Shrunk to fit, as a translation may run longer than the card is wide.
             Component name = text(share.key());
             float fit = Math.min(1.0F, (cardW - 6) / (float) font.width(name));
             graphics.pose().pushPose();
             graphics.pose().translate(x + cardW / 2.0F, y + 5, 0);
             graphics.pose().scale(fit, fit, 1.0F);
-            graphics.drawString(font, name, -font.width(name) / 2, 0, enabled ? TEXT : MUTED, false);
+            graphics.drawString(font, name, -font.width(name) / 2, 0, enabled ? ink().text() : ink().muted(), false);
             graphics.pose().popPose();
             String figure = CreditFormat.of(sum);
             graphics.drawString(font, figure, x + (cardW - font.width(figure)) / 2, y + 16,
-                    enabled ? GOLD : MUTED, false);
+                    enabled ? ink().gold() : ink().muted(), false);
         }
 
         long typed = typed();
@@ -279,15 +266,15 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
         int x = leftPos + INNER_X + INNER_W - CONFIRM_W;
         int y = topPos + ROW_Y;
         boolean hovered = enabled && isOver(mouseX, mouseY, x, y, CONFIRM_W, ROW_H);
-        int face = enabled ? (deposit ? DEPOSIT : WITHDRAW) : DISABLED;
+        int face = enabled ? (deposit ? DEPOSIT : WITHDRAW) : ink().disabled();
         graphics.fill(x, y, x + CONFIRM_W, y + ROW_H, hovered ? face + 0x00181818 : face);
         Component label = text(deposit ? "deposit" : "withdraw");
         graphics.drawString(font, label, x + (CONFIRM_W - font.width(label)) / 2, y + (ROW_H - 8) / 2,
-                enabled ? TEXT : MUTED, false);
+                enabled ? 0xFFFFFFFF : ink().muted(), false);
         if (typed > 0) {
             // What "1.5k" came to, so nobody deposits a thousand times what they meant.
             Component reads = text("amount_reads", CreditFormat.of(typed));
-            graphics.drawString(font, reads, leftPos + INNER_X, topPos + ROW_Y + ROW_H + 3, MUTED, false);
+            graphics.drawString(font, reads, leftPos + INNER_X, topPos + ROW_Y + ROW_H + 3, ink().muted(), false);
         }
 
         // What the page is for, wrapped to it: one line in English, two in Spanish.
@@ -311,7 +298,7 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
         BankStatePayload state = ClientBankState.state();
         List<BankMovement> recent = state == null ? List.of() : state.recent();
         if (recent.isEmpty()) {
-            graphics.drawString(font, text("recent.none"), leftPos + INNER_X, topPos + BODY_Y, MUTED, false);
+            graphics.drawString(font, text("recent.none"), leftPos + INNER_X, topPos + BODY_Y, ink().muted(), false);
             return;
         }
         long now = System.currentTimeMillis();
@@ -321,12 +308,21 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
             BankMovement movement = recent.get(i);
             boolean out = movement.kind() == BankMovement.Kind.WITHDRAWAL;
             String sign = out ? "- " : "+ ";
-            int color = out ? 0xFFE05555 : 0xFF55D06A;
+            int color = out ? ink().negative() : ink().positive();
             String figure = sign + CreditFormat.of(movement.amount());
             graphics.drawString(font, figure, leftPos + INNER_X, y, color, false);
+            // Right-aligned, and shrunk into whatever the figure leaves: a ten-digit
+            // sum beside "depósito · 12 h" was running straight through it.
             Component what = text("recent." + movement.kind().name().toLowerCase(Locale.ROOT),
-                    duration(now - movement.time()));
-            graphics.drawString(font, what, leftPos + INNER_X + INNER_W - font.width(what), y, MUTED, false);
+                    ago(now - movement.time()));
+            int room = INNER_W - font.width(figure) - 8;
+            float fit = Math.min(1.0F, room / (float) font.width(what));
+            int right = leftPos + INNER_X + INNER_W;
+            graphics.pose().pushPose();
+            graphics.pose().translate(right, y + (1.0F - fit) * 4, 0);
+            graphics.pose().scale(fit, fit, 1.0F);
+            graphics.drawString(font, what, -font.width(what), 0, ink().muted(), false);
+            graphics.pose().popPose();
             y += LINE;
         }
     }
@@ -363,7 +359,7 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
     }
 
     private void drawPageTitle(GuiGraphics graphics, Component title) {
-        graphics.drawString(font, title, leftPos + INNER_X, topPos + PAGE_Y, TEXT, false);
+        graphics.drawString(font, title, leftPos + INNER_X, topPos + PAGE_Y, ink().text(), false);
     }
 
     /** Lines wrapped to the page, from {@code fromY} down, stopping at its foot. */
@@ -374,7 +370,7 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
                 if (y + 8 > topPos + CONTENT_B) {
                     return;
                 }
-                graphics.drawString(font, wrapped, leftPos + INNER_X, y, MUTED, false);
+                graphics.drawString(font, wrapped, leftPos + INNER_X, y, ink().muted(), false);
                 y += LINE;
             }
         }
@@ -491,6 +487,16 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
     /** A rate in basis points as a percentage: 200 is "2", 125 is "1.25". */
     private static String percent(long basisPoints) {
         return BigDecimal.valueOf(basisPoints).movePointLeft(2).stripTrailingZeros().toPlainString();
+    }
+
+    /** The colors to draw with, light or dark; looked up each frame, so a change shows at once. */
+    private static Palette ink() {
+        return Palette.current();
+    }
+
+    /** How long ago, short enough for a statement line: now, 5 min, 7 h, 2 days. */
+    private static Component ago(long millis) {
+        return millis < 60_000L ? text("time.now") : duration(millis);
     }
 
     /** A span of time as a person would say it: a few seconds, 5 min, 7 h, 2 d. */

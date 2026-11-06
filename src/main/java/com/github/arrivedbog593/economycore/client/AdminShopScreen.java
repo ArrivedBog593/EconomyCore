@@ -171,9 +171,9 @@ public class AdminShopScreen extends AbstractContainerScreen<AdminShopMenu> {
 
     @Override
     protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
-        graphics.drawString(font, title, titleLabelX, titleLabelY, Panels.LABEL_TEXT, false);
+        graphics.drawString(font, title, titleLabelX, titleLabelY, Panels.label(), false);
         graphics.drawString(font, playerInventoryTitle,
-                inventoryLabelX, inventoryLabelY, Panels.LABEL_TEXT, false);
+                inventoryLabelX, inventoryLabelY, Panels.label(), false);
     }
 
     private void renderCatalog(GuiGraphics graphics, int mouseX, int mouseY) {
@@ -240,7 +240,7 @@ public class AdminShopScreen extends AbstractContainerScreen<AdminShopMenu> {
         if (scroll > 0) {
             graphics.drawString(font, "▲",
                     leftPos + GRID_X + COLUMNS * CELL_WIDTH + 2, topPos + GRID_Y,
-                    Panels.LABEL_TEXT, false);
+                    Panels.label(), false);
         }
         if (scroll + ROWS < totalRows) {
             graphics.drawString(font, "▼",
@@ -248,7 +248,7 @@ public class AdminShopScreen extends AbstractContainerScreen<AdminShopMenu> {
                     // The bottom of the recess, not the top of the last row.
                     // The glyph is 8 tall, so it sits inside the well the same
                     // way the up arrow does at the other end.
-                    topPos + GRID_Y + ROWS * CELL_HEIGHT - 9, Panels.LABEL_TEXT, false);
+                    topPos + GRID_Y + ROWS * CELL_HEIGHT - 9, Panels.label(), false);
         }
     }
 

@@ -62,6 +62,11 @@ va a hacer. Apagar `/bank` en la configuración también cierra `/credits deposi
 Cada jugador ve su monedero y su banco a la derecha de la pantalla, encima de la barra
 lateral del marcador si la hay. Se puede ocultar en `config/economycore-client.toml`.
 
+Las ventanas del mod pueden ser claras, como las de vanilla, u oscuras. `ui.theme` en el mismo
+archivo elige; por defecto, `AUTO`, se ponen oscuras cuando tus paquetes de recursos oscurecen
+las ventanas del propio Minecraft, como hace un paquete de modo oscuro. El resto de Minecraft
+lo oscurece ese paquete, no este mod.
+
 El banco puede pagar **interés**, desactivado por defecto: cada tantas horas reales, a todos
 los que tengan algo guardado, por tramos como en SkyBlock (un 2 % por los primeros
 10.000.000 y un 1 % hasta 15.000.000, salvo que la configuración diga otra cosa). Cada
