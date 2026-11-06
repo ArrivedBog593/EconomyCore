@@ -74,16 +74,18 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
     private static final ResourceLocation COIN =
             ResourceLocation.fromNamespaceAndPath(EconomyCore.MOD_ID, "textures/gui/bank/coin.png");
 
-    private static final int WIDTH = 240;
+    private static final int WIDTH = 200;
     private static final int HEIGHT = 182;
 
-    private static final int TAB_X = 7;
-    private static final int TAB_Y = 18;
-    private static final int TAB_W = 36;
-    private static final int TAB_H = 32;
-    private static final int TAB_GAP = 3;
+    /** Tabs hang off the left edge, as the creative inventory's hang off its top. */
+    private static final int TAB_OUT = 26;
+    private static final int TAB_Y = 6;
+    private static final int TAB_H = 26;
+    private static final int TAB_GAP = 1;
+    /** How far a tab not chosen sits back behind the panel. */
+    private static final int TAB_BACK = 3;
 
-    private static final int CONTENT_X = TAB_X + TAB_W + 6;
+    private static final int CONTENT_X = 8;
     private static final int CONTENT_R = WIDTH - 8;
     private static final int CONTENT_W = CONTENT_R - CONTENT_X;
     private static final int CONTENT_B = HEIGHT - 8;
@@ -133,6 +135,8 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
     @Override
     protected void init() {
         super.init();
+        // Centred with its tabs, which hang off the left of the panel.
+        leftPos += TAB_OUT / 2;
         String carried = amount == null ? "" : amount.getValue();
         // Unbordered: the frame is drawn like the shop's search field.
         amount = new EditBox(font, leftPos + CONTENT_X + 4, topPos + ROW_Y + TEXT_Y,
@@ -161,25 +165,47 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
 
     @Override
     protected void renderBg(@NotNull GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
-        Panels.panel(graphics, leftPos, topPos, leftPos + imageWidth, topPos + imageHeight);
-
+        // As the creative inventory does it: the tabs not chosen go behind the
+        // panel, which covers their inner edge; the chosen one goes on top and
+        // runs into it, so tab and page read as one piece.
         for (Tab each : Tab.values()) {
-            int x = leftPos + TAB_X;
-            int y = topPos + tabY(each);
-            if (each == tab) {
-                // Pressed in, the way a slot is sunk into the panel.
-                Panels.recess(graphics, x, y, TAB_W, TAB_H);
-                graphics.fill(x + 1, y + 1, x + TAB_W - 1, y + TAB_H - 1, Panels.HOVER_WASH);
-            } else {
-                Panels.button(graphics, x, y, TAB_W, TAB_H, Palette.current().panel(),
-                        isOver(mouseX, mouseY, x, y, TAB_W, TAB_H));
+            if (each != tab) {
+                drawTab(graphics, each, false, mouseX, mouseY);
             }
-            graphics.blit(each.icon, x + (TAB_W - 16) / 2, y + 3, 0, 0, 16, 16, 16, 16);
         }
+        Panels.panel(graphics, leftPos, topPos, leftPos + imageWidth, topPos + imageHeight);
+        drawTab(graphics, tab, true, mouseX, mouseY);
 
         drawBalance(graphics, leftPos + CONTENT_X, topPos + BALANCE_Y, text("purse"), menu.purse());
         drawBalance(graphics, leftPos + CONTENT_X + BALANCE_W + GAP, topPos + BALANCE_Y, text("savings"),
                 menu.savings());
+    }
+
+    /**
+     * One tab, in vanilla's frame: a black outline, a lit top and left, a
+     * shaded bottom. The chosen one has no right edge and fills on into the
+     * panel, over the panel's own border; the others sit a little further
+     * out and a shade darker.
+     */
+    private void drawTab(GuiGraphics graphics, Tab each, boolean chosen, int mouseX, int mouseY) {
+        Palette palette = Palette.current();
+        int left = leftPos - TAB_OUT + (chosen ? 0 : TAB_BACK);
+        int right = leftPos + (chosen ? 3 : 2);
+        int top = topPos + tabY(each);
+        int bottom = top + TAB_H;
+        graphics.fill(left, top, right, bottom, Panels.OUTLINE);
+        graphics.fill(left + 1, top + 1, right, bottom - 1, palette.bevelLight());
+        graphics.fill(left + 3, top + 3, right, bottom - 1, palette.bevelDark());
+        graphics.fill(left + 3, top + 3, right, bottom - 3, palette.panel());
+        if (chosen) {
+            // Carry the panel's fill across its border, so the tab opens into it.
+            graphics.fill(leftPos, top + 3, leftPos + 3, bottom - 3, palette.panel());
+        } else {
+            graphics.fill(left + 3, top + 3, right, bottom - 3,
+                    isOver(mouseX, mouseY, left, top, right - left, TAB_H) ? 0x10000000 : 0x28000000);
+        }
+        int width = TAB_OUT + 3 - (chosen ? 0 : TAB_BACK);
+        graphics.blit(each.icon, left + (width - 16) / 2 + 1, top + (TAB_H - 16) / 2, 0, 0, 16, 16, 16, 16);
     }
 
     /** A balance in a sunken well, written the way the shop writes inside its grid. */
@@ -213,15 +239,6 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
     @Override
     protected void renderLabels(@NotNull GuiGraphics graphics, int mouseX, int mouseY) {
         graphics.drawString(font, title, titleLabelX, titleLabelY, Panels.label(), false);
-        for (Tab each : Tab.values()) {
-            Component label = text("tile." + each.key);
-            graphics.pose().pushPose();
-            graphics.pose().translate(TAB_X + TAB_W / 2.0F, tabY(each) + 22, 0);
-            float scale = Math.min(0.6F, (TAB_W - 4) / (float) font.width(label));
-            graphics.pose().scale(scale, scale, 1.0F);
-            graphics.drawString(font, label, -font.width(label) / 2, 0, Panels.label(), false);
-            graphics.pose().popPose();
-        }
     }
 
     /** Deposit or withdraw: a button per share with what it comes to, then a typed amount. */
@@ -382,12 +399,18 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
 
     private void renderTabTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
         for (Tab each : Tab.values()) {
-            if (each != tab && isOver(mouseX, mouseY, leftPos + TAB_X, topPos + tabY(each), TAB_W, TAB_H)) {
+            if (overTab(each, mouseX, mouseY)) {
                 graphics.renderTooltip(font, text("tile." + each.key), mouseX, mouseY);
                 return;
             }
         }
         renderTooltip(graphics, mouseX, mouseY);
+    }
+
+    /** Whether the mouse is on a tab: the part outside the panel, which is all of it a player can reach. */
+    private boolean overTab(Tab each, int mouseX, int mouseY) {
+        int left = leftPos - TAB_OUT + (each == tab ? 0 : TAB_BACK);
+        return isOver(mouseX, mouseY, left, topPos + tabY(each), leftPos - left, TAB_H);
     }
 
     private static int tabY(Tab tab) {
@@ -405,7 +428,7 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
         int x = (int) mouseX;
         int y = (int) mouseY;
         for (Tab each : Tab.values()) {
-            if (isOver(x, y, leftPos + TAB_X, topPos + tabY(each), TAB_W, TAB_H)) {
+            if (overTab(each, x, y)) {
                 if (each != tab) {
                     playClick();
                     select(each);
