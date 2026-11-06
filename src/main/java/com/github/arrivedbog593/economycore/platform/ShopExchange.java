@@ -43,32 +43,6 @@ public final class ShopExchange {
     }
 
     /**
-     * The outcome of a purchase.
-     *
-     * @param success    whether anything was bought
-     * @param itemCount  items handed over
-     * @param credits    credits charged
-     * @param failureKey translation key when nothing happened, else null
-     * @param affordable how many the balance would have covered
-     * @param required   what the refused purchase would have cost
-     */
-    public record Result(boolean success, long itemCount, long credits,
-                         String failureKey, long affordable, long required) {
-
-        static Result failed(String failureKey) {
-            return new Result(false, 0, 0, failureKey, 0, 0);
-        }
-
-        static Result shortOf(String failureKey, long affordable, long required) {
-            return new Result(false, 0, 0, failureKey, affordable, required);
-        }
-
-        static Result ok(long itemCount, long credits) {
-            return new Result(true, itemCount, credits, null, 0, 0);
-        }
-    }
-
-    /**
      * One line of a cart, as the player's screen quoted it.
      *
      * @param number            the entry's place in the catalog as the server
@@ -143,6 +117,9 @@ public final class ShopExchange {
         }
 
         EconomyData data = EconomyData.get(player.server);
+        long now = System.currentTimeMillis();
+        // A restock that fell due is counted before the stock is weighed.
+        data.restockShop(now);
 
         // Resolved and priced first, with nothing touched. A line naming an
         // entry that has since been removed is a stale screen, not an attack:
@@ -170,6 +147,25 @@ public final class ShopExchange {
             ShopEntry entry = found.get();
             if (entry.price() <= 0) {
                 return CartResult.failed("economycore.shop.not_for_sale");
+            }
+            if (!entry.enabled()) {
+                return CartResult.failed("economycore.shop.disabled", entry.prototype().getHoverName());
+            }
+            // Against what is left now, not what the screen showed: two
+            // players can reach for the last few at once, and only one of
+            // them can have them.
+            if (!entry.unlimited() && line.count() > entry.stock()) {
+                return CartResult.failed(entry.stock() == 0
+                                ? "economycore.shop.sold_out" : "economycore.shop.stock_short",
+                        entry.prototype().getHoverName(), entry.stock());
+            }
+            if (entry.dailyLimit() > 0) {
+                long left = entry.dailyLimit() - data.boughtToday(entry.id(), player.getUUID(), now);
+                if (line.count() > left) {
+                    return CartResult.failed(left <= 0
+                                    ? "economycore.shop.daily_limit_reached" : "economycore.shop.daily_limit_short",
+                            entry.prototype().getHoverName(), Math.max(0, left), entry.dailyLimit());
+                }
             }
             if (entry.price() != line.expectedUnitPrice()) {
                 return CartResult.failed("economycore.shop.price_changed",
@@ -233,6 +229,7 @@ public final class ShopExchange {
         // by per-line log entries would write balances that never existed.
         for (Priced line : priced) {
             deliver(player, storage, line);
+            data.recordShopSale(line.entry().id(), player.getUUID(), line.count(), now);
         }
         return CartResult.ok(items, total);
     }
@@ -261,67 +258,5 @@ public final class ShopExchange {
         EconomyEvents.record(storage, TransactionType.SHOP_PURCHASE, player.getUUID(),
                 -line.cost(), storage.balanceOf(player.getUUID()), what);
         ServerIncome.collect(storage, TransactionType.SHOP_PURCHASE, line.cost(), "sold " + what);
-    }
-
-    /**
-     * Buys an exact number of an item at the shop price.
-     * <p>
-     * All or nothing, for the same reason the exchange is: charging for
-     * fifteen and delivering ten is worse than refusing and saying why.
-     */
-    public static Result buy(ServerPlayer player, ShopEntry entry, long count,
-                             CreditStorage storage) {
-        long unitPrice = entry.price();
-        if (count <= 0 || unitPrice <= 0) {
-            return Result.failed("economycore.shop.not_for_sale");
-        }
-
-        // Spendable, not balance. Wagers are not debited when they are
-        // placed, so the balance still counts credits that are already riding
-        // on a spin. Selling against those was a way of canceling a wager
-        // after betting had closed: buy an item with the same credits, watch
-        // the round, drop a stake it could no longer cover, sell the item
-        // back.
-        long balance = storage.balanceOf(player.getUUID());
-        long spendable = Commitments.players().spendable(player.getUUID(), balance);
-        long cost;
-        try {
-            cost = Math.multiplyExact(count, unitPrice);
-        } catch (ArithmeticException absurd) {
-            return Result.shortOf("economycore.shop.cannot_afford",
-                    spendable / unitPrice, Long.MAX_VALUE);
-        }
-        if (cost > spendable) {
-            // Two different problems and two different answers. Being short
-            // of credits is the player's own business; being short only
-            // because of a live wager is something they cannot see, and
-            // saying "not enough credits" while the balance clearly says
-            // otherwise reads as a bug.
-            return Result.shortOf(cost <= balance
-                            ? "economycore.shop.credits_promised"
-                            : "economycore.shop.cannot_afford",
-                    spendable / unitPrice, cost);
-        }
-
-        ItemStack prototype = entry.prototype();
-        long delivered = Math.multiplyExact(count, prototype.getCount());
-        long room = Inventories.spaceFor(player, prototype);
-        if (room < delivered) {
-            return Result.shortOf("economycore.shop.no_room_for", room, cost);
-        }
-
-        if (!storage.withdraw(player.getUUID(), cost)) {
-            return Result.failed("economycore.shop.cannot_afford");
-        }
-
-        Inventories.give(player, prototype, delivered);
-
-        String what = delivered + "x " + entry.itemId()
-                + (entry.hasComponents() ? " (custom)" : "");
-        EconomyEvents.record(storage, TransactionType.SHOP_PURCHASE, player.getUUID(),
-                -cost, storage.balanceOf(player.getUUID()), what);
-        ServerIncome.collect(storage, TransactionType.SHOP_PURCHASE, cost, "sold " + what);
-
-        return Result.ok(delivered, cost);
     }
 }

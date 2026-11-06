@@ -1,5 +1,6 @@
 package com.github.arrivedbog593.economycore.platform.command;
 
+import com.github.arrivedbog593.economycore.api.CreditFormat;
 import com.github.arrivedbog593.economycore.engine.CreditAccount;
 import com.github.arrivedbog593.economycore.engine.CreditValueTable;
 import com.github.arrivedbog593.economycore.engine.EconomyIssue;
@@ -13,6 +14,8 @@ import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.builder.RequiredArgumentBuilder;
+import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
@@ -29,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
 /**
  * In-game editing of conversion values and shop prices.
@@ -110,6 +114,47 @@ public final class EconomyCommands {
                                                 context.getSource(),
                                                 IntegerArgumentType.getInteger(context, "entry"),
                                                 LongArgumentType.getLong(context, "price"))))))
+                // On what terms an entry is sold: on or off, how many are left,
+                // how often it fills back up, how many each player may buy a day.
+                .then(Commands.literal("enable")
+                        .then(shopEntryArgument().executes(context -> updateShop(context.getSource(),
+                                entry(context), entry -> entry.withEnabled(true), "economycore.command.shop.enabled"))))
+                .then(Commands.literal("disable")
+                        .then(shopEntryArgument().executes(context -> updateShop(context.getSource(),
+                                entry(context), entry -> entry.withEnabled(false), "economycore.command.shop.disabled"))))
+                .then(Commands.literal("stock")
+                        .then(shopEntryArgument()
+                                .then(Commands.literal("unlimited")
+                                        .executes(context -> updateShop(context.getSource(), entry(context),
+                                                entry -> entry.withStock(ShopEntry.UNLIMITED, System.currentTimeMillis()),
+                                                "economycore.command.shop.stock_unlimited")))
+                                .then(Commands.argument("amount", LongArgumentType.longArg(0, CreditAccount.MAX_BALANCE))
+                                        .executes(context -> updateShop(context.getSource(), entry(context),
+                                                entry -> entry.withStock(LongArgumentType.getLong(context, "amount"),
+                                                        System.currentTimeMillis()),
+                                                "economycore.command.shop.stock_set",
+                                                LongArgumentType.getLong(context, "amount"))))))
+                .then(Commands.literal("restock")
+                        .then(shopEntryArgument()
+                                .then(Commands.argument("hours", IntegerArgumentType.integer(0, 24 * 365))
+                                        .executes(context -> updateShop(context.getSource(), entry(context),
+                                                entry -> entry.withRestock(IntegerArgumentType.getInteger(context, "hours"),
+                                                        System.currentTimeMillis()),
+                                                IntegerArgumentType.getInteger(context, "hours") == 0
+                                                        ? "economycore.command.shop.restock_off"
+                                                        : "economycore.command.shop.restock_set",
+                                                IntegerArgumentType.getInteger(context, "hours"))))))
+                .then(Commands.literal("limit")
+                        .then(shopEntryArgument()
+                                .then(Commands.argument("perDay", IntegerArgumentType.integer(0, 1_000_000))
+                                        .executes(context -> updateShop(context.getSource(), entry(context),
+                                                entry -> entry.withDailyLimit(IntegerArgumentType.getInteger(context, "perDay")),
+                                                IntegerArgumentType.getInteger(context, "perDay") == 0
+                                                        ? "economycore.command.shop.limit_off"
+                                                        : "economycore.command.shop.limit_set",
+                                                IntegerArgumentType.getInteger(context, "perDay"))))))
+                .then(Commands.literal("info")
+                        .then(shopEntryArgument().executes(context -> shopInfo(context.getSource(), entry(context)))))
                 .then(Commands.literal("list")
                         .executes(context -> listShop(context.getSource(), 1))
                         .then(Commands.argument("page", IntegerArgumentType.integer(1))
@@ -338,6 +383,56 @@ public final class EconomyCommands {
         source.sendSuccess(() -> Component.translatable(
                 "economycore.command.shop.repriced",
                 updated.get().stack().getHoverName(), price, number), true);
+        return 1;
+    }
+
+    private static RequiredArgumentBuilder<CommandSourceStack, Integer> shopEntryArgument() {
+        return Commands.argument("entry", IntegerArgumentType.integer(1)).suggests(EconomySuggestions.SHOP_ENTRIES);
+    }
+
+    private static int entry(CommandContext<CommandSourceStack> context) {
+        return IntegerArgumentType.getInteger(context, "entry");
+    }
+
+    /**
+     * Changes the terms an entry is sold on, says so to the other staff, and
+     * rebuilds the economy so every open shop shows it.
+     *
+     * @param extra what the message needs after the item's name and the entry's number
+     */
+    private static int updateShop(CommandSourceStack source, int number, UnaryOperator<ShopEntry> change,
+                                  String key, Object... extra) {
+        Optional<ShopEntry> updated = EconomyData.get(source.getServer()).updateShopEntry(number, change);
+        if (updated.isEmpty()) {
+            source.sendFailure(Component.translatable("economycore.command.shop.no_such_entry", number));
+            return 0;
+        }
+        EconomyEvents.economy().rebuild(source.getServer());
+        Object[] arguments = new Object[extra.length + 2];
+        arguments[0] = updated.get().stack().getHoverName();
+        arguments[1] = number;
+        System.arraycopy(extra, 0, arguments, 2, extra.length);
+        source.sendSuccess(() -> Component.translatable(key, arguments), true);
+        return 1;
+    }
+
+    /** Everything about one entry: price, on or off, stock, restock, limit a day. */
+    private static int shopInfo(CommandSourceStack source, int number) {
+        Optional<ShopEntry> found = EconomyData.get(source.getServer()).shopEntry(number);
+        if (found.isEmpty()) {
+            source.sendFailure(Component.translatable("economycore.command.shop.no_such_entry", number));
+            return 0;
+        }
+        ShopEntry entry = found.get();
+        source.sendSuccess(() -> Component.translatable("economycore.command.shop.info",
+                number, entry.stack().getHoverName(), CreditFormat.of(entry.price()),
+                Component.translatable(entry.enabled() ? "economycore.command.shop.info_on" : "economycore.command.shop.info_off"),
+                entry.unlimited() ? Component.translatable("economycore.command.shop.info_unlimited")
+                        : Component.literal(CreditFormat.of(entry.stock())),
+                entry.restockHours() <= 0 ? Component.translatable("economycore.command.shop.info_never")
+                        : Component.translatable("economycore.command.shop.info_hours", entry.restockHours()),
+                entry.dailyLimit() <= 0 ? Component.translatable("economycore.command.shop.info_none")
+                        : Component.literal(String.valueOf(entry.dailyLimit()))), false);
         return 1;
     }
 

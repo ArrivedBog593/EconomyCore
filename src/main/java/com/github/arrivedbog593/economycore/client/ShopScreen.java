@@ -1,6 +1,7 @@
 package com.github.arrivedbog593.economycore.client;
 
 import com.github.arrivedbog593.economycore.api.CreditFormat;
+import com.github.arrivedbog593.economycore.platform.ShopEntry;
 import com.github.arrivedbog593.economycore.platform.menu.ShopMenu;
 import com.github.arrivedbog593.economycore.platform.network.ShopCatalogPayload;
 import com.github.arrivedbog593.economycore.platform.network.ShopPurchasePayload;
@@ -448,6 +449,18 @@ public class ShopScreen extends AbstractContainerScreen<ShopMenu> {
             // again for a number a casino rarely charges.
             graphics.drawString(font, compact(entry.price()),
                     x + 21, y + 6, affordable ? 0xFFFFFF : 0xFF6B6B, false);
+            if (!entry.onSale()) {
+                // Still shown, so a player knows the shop has it, but dimmed and
+                // labeled: off, sold out, or bought up to their limit today.
+                graphics.fill(x, y, x + CELL_WIDTH - 2, y + CELL_HEIGHT - 2, 0xA0303030);
+                Component why = Component.translatable(unavailableKey(entry));
+                float fit = Math.min(1.0F, (CELL_WIDTH - 6) / (float) font.width(why));
+                graphics.pose().pushPose();
+                graphics.pose().translate(x + (CELL_WIDTH - 2) / 2.0F, y + 6, 200);
+                graphics.pose().scale(fit, fit, 1.0F);
+                graphics.drawString(font, why, -font.width(why) / 2, 0, 0xFFFF8A65, true);
+                graphics.pose().popPose();
+            }
         }
 
         drawControls(graphics, mouseX, mouseY);
@@ -763,8 +776,10 @@ public class ShopScreen extends AbstractContainerScreen<ShopMenu> {
                     getTooltipFromItem(Minecraft.getInstance(), entry.stack()));
             lines.add(Component.translatable("economycore.shop.unit_price",
                     format(entry.price())).withStyle(ChatFormatting.GRAY));
-            lines.add(Component.translatable("economycore.cart.select_hint")
-                    .withStyle(ChatFormatting.DARK_GRAY));
+            addSupplyLines(lines, entry);
+            lines.add(Component.translatable(entry.onSale()
+                    ? "economycore.cart.select_hint" : unavailableKey(entry))
+                    .withStyle(entry.onSale() ? ChatFormatting.DARK_GRAY : ChatFormatting.RED));
             graphics.renderComponentTooltip(font, lines, mouseX, mouseY);
             return;
         }
@@ -1135,10 +1150,14 @@ public class ShopScreen extends AbstractContainerScreen<ShopMenu> {
         if (!cart.containsKey(selected) && cart.size() >= MAX_LINES) {
             return;
         }
+        if (!entry.onSale()) {
+            return;
+        }
         CartLine existing = cart.get(selected);
-        int total = existing == null
-                ? count
-                : Math.clamp((long) existing.count() + count, 1, MAX_COUNT);
+        // Never more than is left, nor more than this player may still buy
+        // today: the server would refuse the whole cart for it.
+        long most = Math.min(MAX_COUNT, entry.mostPerCart());
+        int total = (int) Math.clamp((existing == null ? 0L : existing.count()) + count, 1, most);
         // Quoted at the price now on the grid, because that is the figure the
         // player is looking at as they press add.
         cart.put(selected, new CartLine(total, entry.price()));
@@ -1310,6 +1329,35 @@ public class ShopScreen extends AbstractContainerScreen<ShopMenu> {
             return String.format(Locale.ROOT, "%.1fM", credits / 1_000_000.0);
         }
         return format(credits);
+    }
+
+    /** Why an entry cannot go in a cart: switched off, sold out, or this player's limit reached. */
+    private static String unavailableKey(ShopCatalogPayload.Entry entry) {
+        if (!entry.enabled()) {
+            return "economycore.shop.unavailable";
+        }
+        if (entry.limitLeft() == 0) {
+            return "economycore.shop.limit_reached_short";
+        }
+        return "economycore.shop.sold_out_short";
+    }
+
+    /** What is left, what this player may still buy today, and when it fills back up. */
+    private static void addSupplyLines(List<Component> lines, ShopCatalogPayload.Entry entry) {
+        if (entry.stock() != ShopEntry.UNLIMITED) {
+            lines.add(Component.translatable("economycore.shop.stock_left", format(entry.stock()))
+                    .withStyle(ChatFormatting.GRAY));
+        }
+        if (entry.limitLeft() >= 0) {
+            lines.add(Component.translatable("economycore.shop.limit_left", entry.limitLeft())
+                    .withStyle(ChatFormatting.GRAY));
+        }
+        if (entry.restockIn() >= 0) {
+            long minutes = Math.max(1, (entry.restockIn() + 59_999) / 60_000);
+            lines.add(Component.translatable(minutes < 60
+                            ? "economycore.shop.restock_minutes" : "economycore.shop.restock_hours",
+                    minutes < 60 ? minutes : (minutes + 59) / 60).withStyle(ChatFormatting.GRAY));
+        }
     }
 
     private static String format(long credits) {

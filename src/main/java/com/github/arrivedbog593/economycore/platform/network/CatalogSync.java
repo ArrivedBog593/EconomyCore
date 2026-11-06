@@ -51,19 +51,14 @@ public final class CatalogSync {
         if (server == null) {
             return;
         }
-        ShopCatalogPayload shop = null;
         ExchangeCatalogPayload exchange = null;
 
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             AbstractContainerMenu open = player.containerMenu;
             if (open instanceof ShopMenu || open instanceof AdminShopMenu) {
-                // Built at most once per refresh and shared by every
-                // recipient: a payload is immutable and is serialized again
-                // for each send.
-                if (shop == null) {
-                    shop = ShopCatalogPayload.current(server);
-                }
-                PacketDistributor.sendToPlayer(player, shop);
+                // One per player, not one for everybody: what each may still buy
+                // today is in it.
+                PacketDistributor.sendToPlayer(player, ShopCatalogPayload.current(player));
             } else if (open instanceof ExchangeMenu || open instanceof AdminExchangeMenu) {
                 if (exchange == null) {
                     exchange = ExchangeCatalogPayload.current();

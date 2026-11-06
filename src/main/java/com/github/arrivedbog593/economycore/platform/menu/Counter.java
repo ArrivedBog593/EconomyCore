@@ -81,7 +81,7 @@ public enum Counter {
     private void sendCatalog(ServerPlayer player) {
         switch (this) {
             case EXCHANGE -> PacketDistributor.sendToPlayer(player, ExchangeCatalogPayload.current());
-            case SHOP -> PacketDistributor.sendToPlayer(player, ShopCatalogPayload.current(player.server));
+            case SHOP -> PacketDistributor.sendToPlayer(player, ShopCatalogPayload.current(player));
             // No catalog: the menu carries the two balances; this, the rest.
             case BANK -> BankStatePayload.send(player);
         }

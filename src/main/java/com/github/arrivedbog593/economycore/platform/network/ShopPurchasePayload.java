@@ -106,7 +106,7 @@ public record ShopPurchasePayload(List<Line> lines) implements CustomPacketPaylo
                 // of date, and leaving them looking at the numbers that were
                 // just rejected would have them click again and fail again.
                 // Sent only to them: everybody else's copy is still correct.
-                PacketDistributor.sendToPlayer(player, ShopCatalogPayload.current(player.server));
+                PacketDistributor.sendToPlayer(player, ShopCatalogPayload.current(player));
                 return;
             }
 
@@ -116,6 +116,9 @@ public record ShopPurchasePayload(List<Line> lines) implements CustomPacketPaylo
             // Refreshes the balance data slots as a side effect, which is what
             // redraws the figure at the top of the screen.
             menu.broadcastChanges();
+            // What is left of a stock, and this player's limit for the day, moved:
+            // everyone with the shop open is sent the shop as it now stands.
+            CatalogSync.refresh(player.server);
         });
     }
 }

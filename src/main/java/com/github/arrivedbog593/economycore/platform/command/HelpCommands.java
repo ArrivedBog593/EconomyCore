@@ -83,6 +83,11 @@ public final class HelpCommands {
             new Entry("/economycore shop price <entry> <price>",
                     "economycore.help.shop_price", OPERATORS),
             new Entry("/economycore shop remove <entry>", "economycore.help.shop_remove", OPERATORS),
+            new Entry("/economycore shop enable|disable <entry>", "economycore.help.shop_enable", OPERATORS),
+            new Entry("/economycore shop stock <entry> <amount|unlimited>", "economycore.help.shop_stock", OPERATORS),
+            new Entry("/economycore shop restock <entry> <hours>", "economycore.help.shop_restock", OPERATORS),
+            new Entry("/economycore shop limit <entry> <perDay>", "economycore.help.shop_limit", OPERATORS),
+            new Entry("/economycore shop info <entry>", "economycore.help.shop_info", OPERATORS),
 
             new Entry("/economycore staff key", "economycore.help.staff_key", EVERYONE),
             new Entry("/economycore staff list", "economycore.help.staff_list", OPERATORS),

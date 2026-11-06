@@ -18,12 +18,14 @@ import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.UnaryOperator;
 
 /**
  * Conversion values, shop prices and the staff list, edited in game and saved
@@ -67,6 +69,12 @@ public final class EconomyData extends SavedData {
     private static final String KEY_DEATH_LOSS_PERCENT = "death_loss_percent";
     private static final String KEY_DEATH_LOSS_COMBAT_ONLY = "death_loss_combat_only";
     private static final String KEY_NEXT_INTEREST = "next_interest_at";
+    private static final String KEY_PURCHASES = "shop_purchases";
+    private static final String KEY_PURCHASE_DAY = "day";
+    private static final String KEY_PURCHASE_LINES = "lines";
+    private static final String KEY_PURCHASE_ENTRY = "entry";
+    private static final String KEY_PURCHASE_BUYER = "buyer";
+    private static final String KEY_PURCHASE_COUNT = "count";
     private static final String KEY_STAFF = "staff";
     private static final String KEY_STAFF_ID = "id";
     private static final String KEY_STAFF_RANK = "rank";
@@ -91,6 +99,15 @@ public final class EconomyData extends SavedData {
 
     /** Whether only a death at the hands of a mob or a player costs credits. */
     private boolean deathLossCombatOnly;
+
+    /**
+     * What each player bought of each entry today, by the entry's id, for
+     * limits a day. Saved, so a restart is not a way round a limit.
+     */
+    private final Map<UUID, Map<UUID, Integer>> purchasesToday = new HashMap<>();
+
+    /** The day {@link #purchasesToday} counts, in days since the epoch. */
+    private long purchaseDay;
 
     /** When interest is next paid, in milliseconds since the epoch; zero until it is first scheduled. */
     private long nextInterestAt;
@@ -135,6 +152,14 @@ public final class EconomyData extends SavedData {
         data.deathLossPercent = Math.clamp(tag.getInt(KEY_DEATH_LOSS_PERCENT), 0, DeathLoss.MAX_PERCENT);
         data.deathLossCombatOnly = tag.getBoolean(KEY_DEATH_LOSS_COMBAT_ONLY);
         data.nextInterestAt = Math.max(0, tag.getLong(KEY_NEXT_INTEREST));
+        CompoundTag purchases = tag.getCompound(KEY_PURCHASES);
+        data.purchaseDay = purchases.getLong(KEY_PURCHASE_DAY);
+        ListTag lines = purchases.getList(KEY_PURCHASE_LINES, Tag.TAG_COMPOUND);
+        for (int i = 0; i < lines.size(); i++) {
+            CompoundTag line = lines.getCompound(i);
+            data.purchasesToday.computeIfAbsent(line.getUUID(KEY_PURCHASE_ENTRY), id -> new HashMap<>())
+                    .put(line.getUUID(KEY_PURCHASE_BUYER), line.getInt(KEY_PURCHASE_COUNT));
+        }
         return data;
     }
 
@@ -156,6 +181,18 @@ public final class EconomyData extends SavedData {
         tag.putInt(KEY_DEATH_LOSS_PERCENT, deathLossPercent);
         tag.putBoolean(KEY_DEATH_LOSS_COMBAT_ONLY, deathLossCombatOnly);
         tag.putLong(KEY_NEXT_INTEREST, nextInterestAt);
+        CompoundTag purchases = new CompoundTag();
+        purchases.putLong(KEY_PURCHASE_DAY, purchaseDay);
+        ListTag lines = new ListTag();
+        purchasesToday.forEach((entry, buyers) -> buyers.forEach((buyer, count) -> {
+            CompoundTag line = new CompoundTag();
+            line.putUUID(KEY_PURCHASE_ENTRY, entry);
+            line.putUUID(KEY_PURCHASE_BUYER, buyer);
+            line.putInt(KEY_PURCHASE_COUNT, count);
+            lines.add(line);
+        }));
+        purchases.put(KEY_PURCHASE_LINES, lines);
+        tag.put(KEY_PURCHASES, purchases);
 
         ListTag listed = new ListTag();
         staff.forEach((member, rank) -> {
@@ -376,10 +413,81 @@ public final class EconomyData extends SavedData {
         if (number < 1 || number > shopEntries.size()) {
             return Optional.empty();
         }
-        ShopEntry updated = new ShopEntry(shopEntries.get(number - 1).stack(), price);
+        return updateShopEntry(number, entry -> entry.withPrice(price));
+    }
+
+    /**
+     * Changes an entry in place: switched on or off, its stock, its restock,
+     * its limit a day. Its number and its id stay what they were.
+     */
+    public Optional<ShopEntry> updateShopEntry(int number, UnaryOperator<ShopEntry> change) {
+        if (number < 1 || number > shopEntries.size()) {
+            return Optional.empty();
+        }
+        ShopEntry updated = change.apply(shopEntries.get(number - 1));
         shopEntries.set(number - 1, updated);
         setDirty();
         return Optional.of(updated);
+    }
+
+    /**
+     * Fills back up every entry whose restock fell due by {@code now}.
+     * <p>
+     * Lazily, when the shop is looked at or bought from, rather than on a
+     * timer: an entry nobody opens the shop to see does not need to be full.
+     *
+     * @return whether anything filled up
+     */
+    public boolean restockShop(long now) {
+        boolean changed = false;
+        for (int i = 0; i < shopEntries.size(); i++) {
+            ShopEntry entry = shopEntries.get(i);
+            ShopEntry restocked = entry.restockedBy(now);
+            if (restocked != entry) {
+                shopEntries.set(i, restocked);
+                changed = true;
+            }
+        }
+        if (changed) {
+            setDirty();
+        }
+        return changed;
+    }
+
+    /** Takes what was sold out of an entry's stock, found by id since numbers may have moved. */
+    public void recordShopSale(UUID entryId, UUID buyer, long count, long now) {
+        for (int i = 0; i < shopEntries.size(); i++) {
+            if (shopEntries.get(i).id().equals(entryId)) {
+                shopEntries.set(i, shopEntries.get(i).afterSale(count));
+                break;
+            }
+        }
+        rollPurchaseDay(now);
+        purchasesToday.computeIfAbsent(entryId, id -> new HashMap<>())
+                .merge(buyer, (int) count, Integer::sum);
+        setDirty();
+    }
+
+    /** How many of an entry this player bought today. */
+    public int boughtToday(UUID entryId, UUID buyer, long now) {
+        if (purchaseDay != dayOf(now)) {
+            return 0;
+        }
+        return purchasesToday.getOrDefault(entryId, Map.of()).getOrDefault(buyer, 0);
+    }
+
+    /** Forgets yesterday's purchases when a new day has begun. */
+    private void rollPurchaseDay(long now) {
+        long today = dayOf(now);
+        if (purchaseDay != today) {
+            purchaseDay = today;
+            purchasesToday.clear();
+        }
+    }
+
+    /** Days count from midnight UTC, the same for every player wherever they are. */
+    private static long dayOf(long millis) {
+        return Math.floorDiv(millis, 86_400_000L);
     }
 
     /** Takes an entry off sale. Everything after it moves up one. */
@@ -403,6 +511,11 @@ public final class EconomyData extends SavedData {
     public Map<String, Long> lowestShopPrices() {
         Map<String, Long> lowest = new LinkedHashMap<>();
         for (ShopEntry entry : shopEntries) {
+            // One that cannot be bought cannot open a loop. Switching it on
+            // rebuilds the economy, which checks it again then.
+            if (!entry.enabled()) {
+                continue;
+            }
             lowest.merge(entry.itemId(), entry.price(), Math::min);
         }
         return Collections.unmodifiableMap(lowest);
