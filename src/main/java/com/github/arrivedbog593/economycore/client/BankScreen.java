@@ -170,11 +170,11 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
         // runs into it, so tab and page read as one piece.
         for (Tab each : Tab.values()) {
             if (each != tab) {
-                drawTab(graphics, each, false, mouseX, mouseY);
+                drawTab(graphics, each, false);
             }
         }
         Panels.panel(graphics, leftPos, topPos, leftPos + imageWidth, topPos + imageHeight);
-        drawTab(graphics, tab, true, mouseX, mouseY);
+        drawTab(graphics, tab, true);
 
         drawBalance(graphics, leftPos + CONTENT_X, topPos + BALANCE_Y, text("purse"), menu.purse());
         drawBalance(graphics, leftPos + CONTENT_X + BALANCE_W + GAP, topPos + BALANCE_Y, text("savings"),
@@ -183,26 +183,49 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
 
     /**
      * One tab, in vanilla's frame: a black outline, a lit top and left, a
-     * shaded bottom. The chosen one has no right edge and fills on into the
-     * panel, over the panel's own border; the others sit a little further
-     * out and a shade darker.
+     * shaded bottom, and its two left corners cut the way the panel's own are.
+     * The chosen one has no right edge and fills on into the panel, over the
+     * panel's own border; the others sit a little further out, filled in a
+     * darker grey.
      */
-    private void drawTab(GuiGraphics graphics, Tab each, boolean chosen, int mouseX, int mouseY) {
+    private void drawTab(GuiGraphics graphics, Tab each, boolean chosen) {
         Palette palette = Palette.current();
         int left = leftPos - TAB_OUT + (chosen ? 0 : TAB_BACK);
-        int right = leftPos + (chosen ? 3 : 2);
         int top = topPos + tabY(each);
         int bottom = top + TAB_H;
-        graphics.fill(left, top, right, bottom, Panels.OUTLINE);
-        graphics.fill(left + 1, top + 1, right, bottom - 1, palette.bevelLight());
-        graphics.fill(left + 3, top + 3, right, bottom - 1, palette.bevelDark());
-        graphics.fill(left + 3, top + 3, right, bottom - 3, palette.panel());
+        // The ones not chosen keep their lit edge and shade but are filled in
+        // the slots' darker grey, as the creative inventory's are.
+        int body = chosen ? palette.panel() : palette.slotFill();
+        // Row by row, as Panels.panel draws its frame, with the same corner
+        // cuts on the left and nothing on the right, which is open.
+        for (int y = top; y < bottom; y++) {
+            int fromTop = y - top;
+            int fromBottom = bottom - 1 - y;
+            // Where the chosen one meets the panel, its outline and shade stop
+            // at the panel's outline, so the panel's lit edge turns into the
+            // tab's, as the creative inventory's tabs join its window.
+            int right = !chosen ? leftPos + 2 : fromTop == 0 || fromBottom <= 2 ? leftPos + 1 : leftPos + 3;
+            int edge = left + Math.max(Math.max(0, 2 - fromTop), Math.max(0, 3 - fromBottom));
+            graphics.fill(edge, y, edge + 1, y + 1, Panels.OUTLINE);
+            int inside = edge + 1;
+            if (fromTop == 0 || fromBottom == 0) {
+                graphics.fill(inside, y, right, y + 1, Panels.OUTLINE);
+            } else if (fromTop <= 2) {
+                graphics.fill(inside, y, right, y + 1, palette.bevelLight());
+            } else if (fromBottom == 1) {
+                graphics.fill(inside, y, right, y + 1, palette.bevelDark());
+            } else if (fromBottom == 2) {
+                graphics.fill(inside, y, inside + 1, y + 1, body);
+                graphics.fill(inside + 1, y, right, y + 1, palette.bevelDark());
+            } else {
+                int lit = fromTop == 3 ? 3 : 2;
+                graphics.fill(inside, y, inside + lit, y + 1, palette.bevelLight());
+                graphics.fill(inside + lit, y, right, y + 1, body);
+            }
+        }
         if (chosen) {
             // Carry the panel's fill across its border, so the tab opens into it.
             graphics.fill(leftPos, top + 3, leftPos + 3, bottom - 3, palette.panel());
-        } else {
-            graphics.fill(left + 3, top + 3, right, bottom - 3,
-                    isOver(mouseX, mouseY, left, top, right - left, TAB_H) ? 0x10000000 : 0x28000000);
         }
         int width = TAB_OUT + 3 - (chosen ? 0 : TAB_BACK);
         graphics.blit(each.icon, left + (width - 16) / 2 + 1, top + (TAB_H - 16) / 2, 0, 0, 16, 16, 16, 16);
