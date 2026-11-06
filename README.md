@@ -46,9 +46,19 @@ server chooses which ones it uses.
 A staff key opens the settings of any of them: prices, the shop's listings, the surcharge.
 
 Players' banks have two of the three: a **banker**, a third kind of clerk in the bank's
-green and gold, and **`/bank`**. Both open a window with the purse, the bank and buttons to
-move credits between them. Switching `/bank` off in the config also closes
-`/credits deposit` and `/credits withdraw`, so players have to go to a banker.
+green and gold, and **`/bank`**. Both open a window laid out like SkyBlock's bank: the purse
+and the bank at the top, and a row of items to click — a chest to deposit all, half or an
+amount, a dispenser to withdraw all, half, a fifth or an amount, a map with the last ten
+movements, a torch with how the bank works on this server — each with a tooltip saying what
+it will do. Switching `/bank` off in the config also closes `/credits deposit` and
+`/credits withdraw`, so players have to go to a banker.
+
+Each player sees their purse and their bank at the right of the screen, above any
+scoreboard sidebar. It can be hidden in `config/economycore-client.toml`.
+
+The bank can pay **interest**, off by default: every so many real hours, to everyone with
+savings, by tranches, as SkyBlock does (2% on the first 10,000,000 and 1% up to 15,000,000
+unless the config says otherwise). Every credit it pays is new money.
 
 ## Commands
 
@@ -65,7 +75,8 @@ move credits between them. Switching `/bank` off in the config also closes
 | `/economycore help`              | everyone                        | Every command you can use, with a line on each |
 
 `/economycore` also covers prices (`values`), the buyback surcharge (`spread`), what players
-lose from their purse when they die (`deathloss`, off by default), the shop (`shop`), the
+lose from their purse when they die (`deathloss`, off by default, and `deathloss combat true`
+to charge only deaths at the hands of a mob or a player), the shop (`shop`), the
 server bank (`bank`) and the staff list (`staff`). `/economycore help` lists them for whoever
 may use them.
 
@@ -82,6 +93,9 @@ for that world.
 | `bank.alwaysOn`          | `false` | Keep the server bank on even when no mod asks for it                |
 | `bank.incomeToBank`      | `true`  | Pay what the server takes in into the bank, rather than removing it |
 | `players.welcomeBalance` | `0`     | Credits a player starts with the first time they join the world     |
+| `interest.enabled`       | `false` | Pay interest on what players keep in the bank                       |
+| `interest.periodHours`   | `31`    | How many real hours apart it is paid                                |
+| `interest.tranches`      | `["10000000:2", "15000000:1"]` | Each slice of a balance and its rate, as `"upTo:percent"`; nothing above the last |
 
 ## The server bank and the server's income
 

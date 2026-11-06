@@ -1,5 +1,6 @@
 package com.github.arrivedbog593.economycore;
 
+import com.github.arrivedbog593.economycore.platform.EconomyClientConfig;
 import com.github.arrivedbog593.economycore.platform.EconomyConfig;
 import com.github.arrivedbog593.economycore.platform.command.CounterCommands;
 import com.github.arrivedbog593.economycore.platform.registry.EconomyBlockEntities;
@@ -43,6 +44,7 @@ public final class EconomyCore {
         EconomyMenus.register(modEventBus);
         EconomyCreativeTabs.register(modEventBus);
         container.registerConfig(ModConfig.Type.SERVER, EconomyConfig.SPEC);
+        container.registerConfig(ModConfig.Type.CLIENT, EconomyClientConfig.SPEC);
         modEventBus.addListener(CounterCommands::onConfigReloaded);
     }
 }

@@ -1,11 +1,15 @@
 package com.github.arrivedbog593.economycore.platform;
 
 import com.github.arrivedbog593.economycore.api.CreditFormat;
+import com.github.arrivedbog593.economycore.api.CreditMath;
 import com.github.arrivedbog593.economycore.api.Pocket;
 import com.github.arrivedbog593.economycore.api.Settlement;
 import com.github.arrivedbog593.economycore.api.TransactionType;
+import com.github.arrivedbog593.economycore.engine.BankMovement;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+
+import java.math.RoundingMode;
 
 /**
  * A player moving their own credits between purse and savings.
@@ -37,6 +41,29 @@ public final class PersonalBank {
     private PersonalBank() {
     }
 
+    /**
+     * Puts a share of the free purse away: half, say. Worked out here, from
+     * the purse as it is now, rather than by the screen from figures that may
+     * be a tick old.
+     */
+    public static Result depositShare(ServerPlayer player, int percent) {
+        CreditStorage storage = CreditStorage.get(player.server);
+        long free = Commitments.players().spendable(player.getUUID(), storage.balanceOf(player.getUUID()));
+        return deposit(player, shareOf(free, percent));
+    }
+
+    /** Takes a share of savings out into the purse. */
+    public static Result withdrawShare(ServerPlayer player, int percent) {
+        long saved = CreditStorage.get(player.server).balanceOf(player.getUUID(), Pocket.SAVINGS);
+        return withdraw(player, shareOf(saved, percent));
+    }
+
+    /** Rounded down, so a share never asks for more than there is; zero becomes "nothing to move". */
+    private static long shareOf(long amount, int percent) {
+        long share = CreditMath.percentOf(amount, Math.clamp(percent, 0, CreditMath.PERCENT), RoundingMode.FLOOR);
+        return share > 0 ? share : 0;
+    }
+
     /** Puts credits from the purse away in savings; {@link #ALL} for every free one. */
     public static Result deposit(ServerPlayer player, long requested) {
         CreditStorage storage = CreditStorage.get(player.server);
@@ -52,7 +79,7 @@ public final class PersonalBank {
                     : "economycore.command.credits.deposit_short", CreditFormat.of(free)));
         }
         return move(player, storage, Pocket.PURSE, Pocket.SAVINGS, amount,
-                TransactionType.SAVINGS_DEPOSIT, "economycore.command.credits.deposited");
+                TransactionType.SAVINGS_DEPOSIT, BankMovement.Kind.DEPOSIT, "economycore.command.credits.deposited");
     }
 
     /** Takes credits out of savings into the purse; {@link #ALL} for all of them. */
@@ -68,11 +95,11 @@ public final class PersonalBank {
                     CreditFormat.of(saved)));
         }
         return move(player, storage, Pocket.SAVINGS, Pocket.PURSE, amount,
-                TransactionType.SAVINGS_WITHDRAW, "economycore.command.credits.withdrew");
+                TransactionType.SAVINGS_WITHDRAW, BankMovement.Kind.WITHDRAWAL, "economycore.command.credits.withdrew");
     }
 
     private static Result move(ServerPlayer player, CreditStorage storage, Pocket from, Pocket to,
-                               long amount, TransactionType type, String doneKey) {
+                               long amount, TransactionType type, BankMovement.Kind kind, String doneKey) {
         Settlement.Result result = Settlement.create()
                 .move(player.getUUID(), from, -amount, type)
                 .move(player.getUUID(), to, amount, type)
@@ -83,6 +110,7 @@ public final class PersonalBank {
                     : Component.translatable("economycore.command.credits.pay_short",
                     CreditFormat.of(storage.balanceOf(player.getUUID(), from))));
         }
+        storage.recordBankMovement(player.getUUID(), new BankMovement(System.currentTimeMillis(), kind, amount));
         return new Result(amount, Component.translatable(doneKey, CreditFormat.of(amount),
                 CreditFormat.of(storage.balanceOf(player.getUUID())),
                 CreditFormat.of(storage.balanceOf(player.getUUID(), Pocket.SAVINGS))));

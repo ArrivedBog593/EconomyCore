@@ -45,6 +45,16 @@ public final class EconomyPayloads {
                 ExchangeRedeemPayload.STREAM_CODEC,
                 ExchangeRedeemPayload::handleOnServer);
 
+        registrar.playToClient(
+                BankStatePayload.TYPE,
+                BankStatePayload.STREAM_CODEC,
+                BankStatePayload::handleOnClient);
+
+        registrar.playToClient(
+                PursePayload.TYPE,
+                PursePayload.STREAM_CODEC,
+                PursePayload::handleOnClient);
+
         registrar.playToServer(
                 BankActionPayload.TYPE,
                 BankActionPayload.STREAM_CODEC,

@@ -3,11 +3,15 @@ package com.github.arrivedbog593.economycore.client;
 import com.github.arrivedbog593.economycore.EconomyCore;
 import com.github.arrivedbog593.economycore.platform.registry.EconomyEntities;
 import com.github.arrivedbog593.economycore.platform.registry.EconomyMenus;
+import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
+import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
+import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 
 /**
  * The economy's client-only wiring.
@@ -39,5 +43,17 @@ public final class EconomyClientSetup {
         event.registerEntityRenderer(EconomyEntities.EXCHANGE_CLERK.get(), ClerkRenderer::new);
         event.registerEntityRenderer(EconomyEntities.SHOP_CLERK.get(), ClerkRenderer::new);
         event.registerEntityRenderer(EconomyEntities.BANKER.get(), ClerkRenderer::new);
+    }
+
+    @SubscribeEvent
+    public static void registerGuiLayers(RegisterGuiLayersEvent event) {
+        event.registerAbove(VanillaGuiLayers.SCOREBOARD_SIDEBAR,
+                ResourceLocation.fromNamespaceAndPath(EconomyCore.MOD_ID, "purse"), PurseHud::render);
+    }
+
+    /** Forgets the last server's purse, so it is not shown on the next one before that one says. */
+    @SubscribeEvent
+    public static void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
+        ClientPurse.forget();
     }
 }

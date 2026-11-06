@@ -65,6 +65,8 @@ public final class EconomyData extends SavedData {
 
     private static final String KEY_SPREAD_PERCENT = "buyback_spread_percent";
     private static final String KEY_DEATH_LOSS_PERCENT = "death_loss_percent";
+    private static final String KEY_DEATH_LOSS_COMBAT_ONLY = "death_loss_combat_only";
+    private static final String KEY_NEXT_INTEREST = "next_interest_at";
     private static final String KEY_STAFF = "staff";
     private static final String KEY_STAFF_ID = "id";
     private static final String KEY_STAFF_RANK = "rank";
@@ -86,6 +88,12 @@ public final class EconomyData extends SavedData {
 
     /** The share of a free purse a player loses on dying, as a percentage. Off by default. */
     private int deathLossPercent;
+
+    /** Whether only a death at the hands of a mob or a player costs credits. */
+    private boolean deathLossCombatOnly;
+
+    /** When interest is next paid, in milliseconds since the epoch; zero until it is first scheduled. */
+    private long nextInterestAt;
 
     /**
      * Who may configure the casino without being an operator, and how far.
@@ -125,6 +133,8 @@ public final class EconomyData extends SavedData {
                     CreditValueTable.NO_SPREAD, CreditValueTable.MAX_SPREAD_PERCENT);
         }
         data.deathLossPercent = Math.clamp(tag.getInt(KEY_DEATH_LOSS_PERCENT), 0, DeathLoss.MAX_PERCENT);
+        data.deathLossCombatOnly = tag.getBoolean(KEY_DEATH_LOSS_COMBAT_ONLY);
+        data.nextInterestAt = Math.max(0, tag.getLong(KEY_NEXT_INTEREST));
         return data;
     }
 
@@ -144,6 +154,8 @@ public final class EconomyData extends SavedData {
         writeShop(tag, registries);
         tag.putInt(KEY_SPREAD_PERCENT, spreadPercent);
         tag.putInt(KEY_DEATH_LOSS_PERCENT, deathLossPercent);
+        tag.putBoolean(KEY_DEATH_LOSS_COMBAT_ONLY, deathLossCombatOnly);
+        tag.putLong(KEY_NEXT_INTEREST, nextInterestAt);
 
         ListTag listed = new ListTag();
         staff.forEach((member, rank) -> {
@@ -239,6 +251,24 @@ public final class EconomyData extends SavedData {
             throw new IllegalArgumentException("Death loss out of range: " + percent);
         }
         this.deathLossPercent = percent;
+        setDirty();
+    }
+
+    public boolean deathLossCombatOnly() {
+        return deathLossCombatOnly;
+    }
+
+    public void setDeathLossCombatOnly(boolean combatOnly) {
+        this.deathLossCombatOnly = combatOnly;
+        setDirty();
+    }
+
+    public long nextInterestAt() {
+        return nextInterestAt;
+    }
+
+    public void setNextInterestAt(long time) {
+        this.nextInterestAt = time;
         setDirty();
     }
 

@@ -6,6 +6,8 @@ import com.github.arrivedbog593.economycore.api.CreditMath;
 import com.github.arrivedbog593.economycore.api.TransactionType;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.GameRules;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -32,6 +34,9 @@ import java.math.RoundingMode;
  * crash rolls the world back to before the death, and the credits must come
  * back with it.
  * <p>
+ * The server may limit it to deaths in combat, at the hands of a mob or a
+ * player, as SkyBlock does, so a fall or a pool of lava costs nothing.
+ * <p>
  * Nothing is taken under {@code keepInventory}, which says deaths on this
  * server cost nothing, and nothing when another mod cancels the death — a
  * totem, say — which is why this listens last.
@@ -50,8 +55,12 @@ public final class DeathLoss {
         if (!(event.getEntity() instanceof ServerPlayer player)) {
             return;
         }
-        int percent = EconomyData.get(player.server).deathLossPercent();
+        EconomyData data = EconomyData.get(player.server);
+        int percent = data.deathLossPercent();
         if (percent <= 0 || player.serverLevel().getGameRules().getBoolean(GameRules.RULE_KEEPINVENTORY)) {
+            return;
+        }
+        if (data.deathLossCombatOnly() && !inCombat(event.getSource())) {
             return;
         }
         long lost = lossFrom(Commitments.spendable(player.server, player.getUUID()), percent);
@@ -67,6 +76,14 @@ public final class DeathLoss {
                 storage.balanceOf(player.getUUID()), detail);
         ServerIncome.collect(storage, TransactionType.DEATH_LOSS, lost, detail);
         player.sendSystemMessage(Component.translatable("economycore.death_loss", CreditFormat.of(lost)));
+    }
+
+    /**
+     * Whether a mob or a player did it, directly or with something they
+     * fired: an arrow's owner counts, a fall or the lava does not.
+     */
+    static boolean inCombat(DamageSource source) {
+        return source.getEntity() instanceof LivingEntity;
     }
 
     /** The share of a free purse that dying costs: whatever is not kept, the kept part rounded half up. */

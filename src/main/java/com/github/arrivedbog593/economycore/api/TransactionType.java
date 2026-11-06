@@ -80,6 +80,16 @@ public final class TransactionType {
      */
     public static final TransactionType DEATH_LOSS = register("death_loss", false);
 
+    /**
+     * Interest paid into a player's savings.
+     * <p>
+     * Not recoverable, though no items are involved: when it is next due is
+     * saved with the world too, so a crash that loses the payment also
+     * rolls the due time back, and the payment is simply made again. Replaying
+     * it as well would pay it twice.
+     */
+    public static final TransactionType SAVINGS_INTEREST = register("savings_interest", false);
+
     private final String code;
     private final boolean recoverable;
 

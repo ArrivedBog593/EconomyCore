@@ -1,6 +1,7 @@
 package com.github.arrivedbog593.economycore.platform.menu;
 
 import com.github.arrivedbog593.economycore.platform.item.AdminKeyItem;
+import com.github.arrivedbog593.economycore.platform.network.BankStatePayload;
 import com.github.arrivedbog593.economycore.platform.network.ExchangeCatalogPayload;
 import com.github.arrivedbog593.economycore.platform.network.ShopCatalogPayload;
 import net.minecraft.network.chat.Component;
@@ -81,9 +82,8 @@ public enum Counter {
         switch (this) {
             case EXCHANGE -> PacketDistributor.sendToPlayer(player, ExchangeCatalogPayload.current());
             case SHOP -> PacketDistributor.sendToPlayer(player, ShopCatalogPayload.current(player.server));
-            case BANK -> {
-                // No catalog: the menu carries the two balances itself.
-            }
+            // No catalog: the menu carries the two balances; this, the rest.
+            case BANK -> BankStatePayload.send(player);
         }
     }
 }

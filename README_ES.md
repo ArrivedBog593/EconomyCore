@@ -51,10 +51,21 @@ Una llave de staff abre la configuración de cualquiera de ellos: precios, lo qu
 tienda, el recargo.
 
 El banco de los jugadores tiene dos de las tres: un **banquero**, un tercer tipo de
-empleado con el verde y dorado del banco, y **`/bank`**. Los dos abren una ventana con el
-monedero, el banco y botones para mover créditos entre ellos. Apagar `/bank` en la
-configuración también cierra `/credits deposit` y `/credits withdraw`, para que los
-jugadores tengan que ir a un banquero.
+empleado con el verde y dorado del banco, y **`/bank`**. Los dos abren una ventana parecida
+al banco de SkyBlock: el monedero y el banco arriba, y una fila de objetos en los que hacer
+clic — un cofre para depositar todo, la mitad o una cantidad; un dispensador para retirar
+todo, la mitad, el 20 % o una cantidad; un mapa con los últimos diez movimientos; una
+antorcha con cómo funciona el banco en este servidor —, cada uno con un tooltip que dice qué
+va a hacer. Apagar `/bank` en la configuración también cierra `/credits deposit` y
+`/credits withdraw`, para que los jugadores tengan que ir a un banquero.
+
+Cada jugador ve su monedero y su banco a la derecha de la pantalla, encima de la barra
+lateral del marcador si la hay. Se puede ocultar en `config/economycore-client.toml`.
+
+El banco puede pagar **interés**, desactivado por defecto: cada tantas horas reales, a todos
+los que tengan algo guardado, por tramos como en SkyBlock (un 2 % por los primeros
+10.000.000 y un 1 % hasta 15.000.000, salvo que la configuración diga otra cosa). Cada
+crédito que paga es dinero nuevo.
 
 ## Comandos
 
@@ -71,7 +82,8 @@ jugadores tengan que ir a un banquero.
 | `/economycore help` | todos | Todos los comandos que puedes usar, con una línea sobre cada uno |
 
 `/economycore` también cubre los precios (`values`), el recargo de recompra (`spread`), lo que
-pierden los jugadores del monedero al morir (`deathloss`, desactivado por defecto), la tienda
+pierden los jugadores del monedero al morir (`deathloss`, desactivado por defecto, y
+`deathloss combat true` para que solo cuesten las muertes a manos de un mob o un jugador), la tienda
 (`shop`), el banco del servidor (`bank`) y la lista de staff (`staff`).
 `/economycore help` los muestra a quien pueda usarlos.
 
@@ -88,6 +100,9 @@ reemplaza para ese mundo.
 | `bank.alwaysOn` | `false` | Mantiene el banco del servidor encendido aunque ningún mod lo pida |
 | `bank.incomeToBank` | `true` | Mete al banco lo que cobra el servidor, en vez de retirarlo |
 | `players.welcomeBalance` | `0` | Créditos con los que empieza un jugador la primera vez que entra al mundo |
+| `interest.enabled` | `false` | Paga interés por lo que los jugadores guardan en el banco |
+| `interest.periodHours` | `31` | Cada cuántas horas reales se paga |
+| `interest.tranches` | `["10000000:2", "15000000:1"]` | Cada tramo del saldo y lo que rinde, como `"hasta:porcentaje"`; por encima del último, nada |
 
 ## El banco del servidor y lo que cobra el servidor
 

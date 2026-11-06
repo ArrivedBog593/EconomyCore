@@ -3,6 +3,8 @@ package com.github.arrivedbog593.economycore.platform;
 import com.github.arrivedbog593.economycore.engine.CreditAccount;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
+import java.util.List;
+
 /**
  * What a server owner decides about the economy, per world.
  * <p>
@@ -32,6 +34,15 @@ public final class EconomyConfig {
 
     /** What a player finds in their account the first time they join this world. */
     public static final ModConfigSpec.LongValue WELCOME_BALANCE;
+
+    /** Whether savings earn interest. Off by default: every credit it pays is new money. */
+    public static final ModConfigSpec.BooleanValue INTEREST_ENABLED;
+
+    /** How many real hours apart interest is paid. */
+    public static final ModConfigSpec.IntValue INTEREST_PERIOD_HOURS;
+
+    /** Each slice of a balance and its rate, as {@code "upTo:percent"}. */
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> INTEREST_TRANCHES;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -68,6 +79,24 @@ public final class EconomyConfig {
                         "to start them off. 0 gives nothing. Players who had already joined are not paid",
                         "when it is set or raised.")
                 .defineInRange("welcomeBalance", 0L, 0L, CreditAccount.MAX_BALANCE);
+        builder.pop();
+        builder.push("interest");
+        INTEREST_ENABLED = builder
+                .comment("Pay interest on what players keep in their bank. Off by default: interest is new",
+                        "money, and a server that pays it watches its prices climb faster.")
+                .define("enabled", false);
+        INTEREST_PERIOD_HOURS = builder
+                .comment("How many real hours apart it is paid, to everyone with savings, online or not.",
+                        "A server that was off when it fell due pays once when it starts, not once for",
+                        "every period missed.")
+                .defineInRange("periodHours", 31, 1, 24 * 365);
+        INTEREST_TRANCHES = builder
+                .comment("Each slice of a bank balance and the rate it earns, as \"upTo:percent\". The default",
+                        "pays 2% on the first 10,000,000 and 1% on what lies between that and 15,000,000;",
+                        "anything above the last slice earns nothing, which caps every payment. Rates may",
+                        "have decimals, such as \"1000000:0.5\". If any line cannot be read, nothing is paid.")
+                .defineListAllowEmpty("tranches", List.of("10000000:2", "15000000:1"), () -> "1000:1",
+                        line -> line instanceof String);
         builder.pop();
         SPEC = builder.build();
     }

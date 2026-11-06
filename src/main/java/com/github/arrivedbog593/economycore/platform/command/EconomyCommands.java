@@ -9,6 +9,7 @@ import com.github.arrivedbog593.economycore.platform.EconomyEvents;
 import com.github.arrivedbog593.economycore.platform.ItemIds;
 import com.github.arrivedbog593.economycore.platform.ShopEntry;
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -129,7 +130,11 @@ public final class EconomyCommands {
                 .executes(context -> showDeathLoss(context.getSource()))
                 .then(Commands.argument("percent", IntegerArgumentType.integer(0, DeathLoss.MAX_PERCENT))
                         .executes(context -> deathLoss(context.getSource(),
-                                IntegerArgumentType.getInteger(context, "percent")))));
+                                IntegerArgumentType.getInteger(context, "percent"))))
+                .then(Commands.literal("combat")
+                        .then(Commands.argument("only", BoolArgumentType.bool())
+                                .executes(context -> deathLossCombat(context.getSource(),
+                                        BoolArgumentType.getBool(context, "only"))))));
 
         dispatcher.register(root);
     }
@@ -163,8 +168,11 @@ public final class EconomyCommands {
 
     /** What a player loses on dying, typed without a value: the setting now and how to change it. */
     private static int showDeathLoss(CommandSourceStack source) {
-        int percent = EconomyData.get(source.getServer()).deathLossPercent();
+        EconomyData data = EconomyData.get(source.getServer());
+        int percent = data.deathLossPercent();
         source.sendSuccess(() -> Component.translatable("economycore.deathloss.show", percent), false);
+        source.sendSuccess(() -> Component.translatable(data.deathLossCombatOnly()
+                ? "economycore.deathloss.combat_on" : "economycore.deathloss.combat_off"), false);
         return percent;
     }
 
@@ -177,6 +185,14 @@ public final class EconomyCommands {
         source.sendSuccess(() -> percent == 0
                 ? Component.translatable("economycore.deathloss.off")
                 : Component.translatable("economycore.deathloss.set", percent), true);
+        return 1;
+    }
+
+    /** Whether only deaths at the hands of a mob or a player cost credits, as in SkyBlock. */
+    private static int deathLossCombat(CommandSourceStack source, boolean only) {
+        EconomyData.get(source.getServer()).setDeathLossCombatOnly(only);
+        source.sendSuccess(() -> Component.translatable(only
+                ? "economycore.deathloss.combat_on" : "economycore.deathloss.combat_off"), true);
         return 1;
     }
 
