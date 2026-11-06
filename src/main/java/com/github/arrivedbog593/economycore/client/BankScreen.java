@@ -121,7 +121,7 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
     private static final int DISABLED = 0xFF3A3A40;
 
     private static final List<Share> DEPOSIT_SHARES = List.of(
-            new Share("share.all_purse", 100), new Share("share.half_purse", 50));
+            new Share("share.all", 100), new Share("share.half", 50));
     private static final List<Share> WITHDRAW_SHARES = List.of(
             new Share("share.all", 100), new Share("share.half", 50), new Share("share.fifth", 20));
 
@@ -247,7 +247,7 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
     /** Deposit or withdraw: a card per share with what it comes to, then a typed amount. */
     private void renderMove(GuiGraphics graphics, int mouseX, int mouseY, boolean deposit) {
         long of = deposit ? menu.free() : menu.savings();
-        drawPageTitle(graphics, text(deposit ? "deposit_lore" : "withdraw_lore"));
+        drawPageTitle(graphics, text(deposit ? "tile.deposit" : "tile.withdraw"));
 
         List<Share> shares = deposit ? DEPOSIT_SHARES : WITHDRAW_SHARES;
         int cardW = (INNER_W - PAD * (shares.size() - 1)) / shares.size();
@@ -261,9 +261,14 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
             graphics.fill(x, y, x + cardW, y + CARD_H, enabled ? (hovered ? CARD_HOVER : CARD) : DISABLED);
             graphics.fill(x, y + CARD_H - 2, x + cardW, y + CARD_H,
                     enabled ? (deposit ? DEPOSIT : WITHDRAW) : DISABLED);
+            // Shrunk to fit, as a translation may run longer than the card is wide.
             Component name = text(share.key());
-            graphics.drawString(font, name, x + (cardW - font.width(name)) / 2, y + 5,
-                    enabled ? TEXT : MUTED, false);
+            float fit = Math.min(1.0F, (cardW - 6) / (float) font.width(name));
+            graphics.pose().pushPose();
+            graphics.pose().translate(x + cardW / 2.0F, y + 5, 0);
+            graphics.pose().scale(fit, fit, 1.0F);
+            graphics.drawString(font, name, -font.width(name) / 2, 0, enabled ? TEXT : MUTED, false);
+            graphics.pose().popPose();
             String figure = CreditFormat.of(sum);
             graphics.drawString(font, figure, x + (cardW - font.width(figure)) / 2, y + 16,
                     enabled ? GOLD : MUTED, false);
@@ -285,7 +290,9 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
             graphics.drawString(font, reads, leftPos + INNER_X, topPos + ROW_Y + ROW_H + 3, MUTED, false);
         }
 
+        // What the page is for, wrapped to it: one line in English, two in Spanish.
         List<Component> footer = new ArrayList<>();
+        footer.add(text(deposit ? "deposit_lore" : "withdraw_lore"));
         long promised = menu.purse() - menu.free();
         if (deposit && promised > 0) {
             footer.add(text("promised", CreditFormat.of(promised)));
