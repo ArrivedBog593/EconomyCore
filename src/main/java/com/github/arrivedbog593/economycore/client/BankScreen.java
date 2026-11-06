@@ -34,11 +34,13 @@ import java.util.Locale;
  * The banker's window: tabs down the left, the chosen page on the right, and
  * both balances always at the top of it.
  * <p>
- * Dark, unlike the vanilla-gray shop and exchange: a bank reads better as a
- * quiet room than as a crafting table, and it is what SkyBlock players coming
- * from a dark-mode client expect. Its icons are its own — a safe with money
- * going in, the same safe with money coming out, a ledger, an "i" — rather
- * than a chest and a dispenser standing in for them.
+ * Drawn the way the shop and the exchange are, from {@link Panels}: vanilla's
+ * gray frame, sunken wells, dark outlined buttons with green or amber for the
+ * one that acts, a black field to type into. So the three counters read as one
+ * mod, sit beside a chest without looking borrowed from another game, and
+ * follow the light or dark theme together. Its icons are its own — a safe with
+ * money going in, the same safe with money coming out, a ledger, an "i" —
+ * rather than a chest and a dispenser standing in for them.
  * <p>
  * Nothing hides in a tooltip. Recent movements and how the bank works each
  * have a page, so they can be read without holding the mouse still.
@@ -72,40 +74,44 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
     private static final ResourceLocation COIN =
             ResourceLocation.fromNamespaceAndPath(EconomyCore.MOD_ID, "textures/gui/bank/coin.png");
 
-    private static final int WIDTH = 256;
-    private static final int HEIGHT = 186;
+    private static final int WIDTH = 240;
+    private static final int HEIGHT = 182;
 
-    private static final int TAB_X = 6;
-    private static final int TAB_W = 44;
-    private static final int TAB_Y = 20;
-    private static final int TAB_H = 36;
+    private static final int TAB_X = 7;
+    private static final int TAB_Y = 18;
+    private static final int TAB_W = 36;
+    private static final int TAB_H = 32;
+    private static final int TAB_GAP = 3;
 
-    private static final int CONTENT_X = TAB_X + TAB_W;
-    private static final int CONTENT_Y = TAB_Y;
-    private static final int CONTENT_R = WIDTH - 6;
-    private static final int CONTENT_B = HEIGHT - 6;
-    private static final int PAD = 6;
-    private static final int INNER_X = CONTENT_X + PAD;
-    private static final int INNER_W = CONTENT_R - PAD - INNER_X;
+    private static final int CONTENT_X = TAB_X + TAB_W + 6;
+    private static final int CONTENT_R = WIDTH - 8;
+    private static final int CONTENT_W = CONTENT_R - CONTENT_X;
+    private static final int CONTENT_B = HEIGHT - 8;
+    private static final int GAP = 4;
 
-    private static final int BALANCE_Y = CONTENT_Y + PAD;
+    private static final int BALANCE_Y = 18;
     private static final int BALANCE_H = 28;
-    private static final int BALANCE_W = (INNER_W - PAD) / 2;
-    private static final int RULE_Y = BALANCE_Y + BALANCE_H + 5;
-    private static final int PAGE_Y = RULE_Y + 6;
-    private static final int BODY_Y = PAGE_Y + 13;
+    private static final int BALANCE_W = (CONTENT_W - GAP) / 2;
+    private static final int PAGE_Y = BALANCE_Y + BALANCE_H + 6;
+    private static final int BODY_Y = PAGE_Y + 12;
 
-    private static final int CARD_H = 30;
-    private static final int ROW_Y = BODY_Y + CARD_H + 8;
-    private static final int ROW_H = 16;
-    private static final int CONFIRM_W = 62;
-    private static final int FOOTER_Y = ROW_Y + ROW_H + 8;
+    private static final int CARD_H = 24;
+    private static final int ROW_Y = BODY_Y + CARD_H + 7;
+    private static final int ROW_H = 14;
+    private static final int CONFIRM_W = 58;
+    private static final int TEXT_Y = (ROW_H - 8) / 2 + 1;
+    private static final int FOOTER_Y = ROW_Y + ROW_H + 15;
     private static final int LINE = 10;
 
-    // Colors that mean the same in both themes; the rest come from the {@link Palette}.
-    private static final int ACCENT = 0xFFD4AF37;
-    private static final int DEPOSIT = 0xFF2E8B3E;
-    private static final int WITHDRAW = 0xFFB07418;
+    // The shop's and the exchange's buttons, so the three counters match.
+    private static final int CONTROL_FACE = 0xFF555555;
+    private static final int DEPOSIT_FACE = 0xFF2E7D32;
+    private static final int WITHDRAW_FACE = 0xFFB07B18;
+    private static final int DISABLED_FACE = 0xFF4A4A4A;
+    private static final int ON_FACE = 0xFFFFFFFF;
+    private static final int ON_DISABLED = 0xFF9A9A9A;
+    private static final int IN_WELL = 0xFFE8E8E8;
+    private static final int SUM = 0xFFFFD54F;
 
     private static final List<Share> DEPOSIT_SHARES = List.of(
             new Share("share.all", 100), new Share("share.half", 50));
@@ -128,11 +134,11 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
     protected void init() {
         super.init();
         String carried = amount == null ? "" : amount.getValue();
-        amount = new EditBox(font, leftPos + INNER_X + 4, topPos + ROW_Y + (ROW_H - 8) / 2,
-                INNER_W - CONFIRM_W - 12, 9, text("amount"));
+        // Unbordered: the frame is drawn like the shop's search field.
+        amount = new EditBox(font, leftPos + CONTENT_X + 4, topPos + ROW_Y + TEXT_Y,
+                CONTENT_W - CONFIRM_W - 12, 8, text("amount"));
         amount.setBordered(false);
-        amount.setTextColor(ink().text());
-        amount.setHint(text("amount_hint").withStyle(ChatFormatting.DARK_GRAY));
+        amount.setHint(text("amount_hint").withStyle(ChatFormatting.GRAY));
         amount.setFilter(text -> text.isEmpty() || text.matches("\\d{0,13}(\\.\\d{0,2})?[kKmM]?"));
         amount.setValue(carried);
         addRenderableWidget(amount);
@@ -155,52 +161,40 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
 
     @Override
     protected void renderBg(@NotNull GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
-        int x = leftPos;
-        int y = topPos;
-        // Frame and a one-pixel bevel, as vanilla's panel has, in the dark.
-        graphics.fill(x, y, x + WIDTH, y + HEIGHT, ink().frame());
-        graphics.fill(x + 1, y + 1, x + WIDTH - 1, y + HEIGHT - 1, ink().bevelLight());
-        graphics.fill(x + 2, y + 2, x + WIDTH - 1, y + HEIGHT - 1, ink().bevelDark());
-        graphics.fill(x + 2, y + 2, x + WIDTH - 2, y + HEIGHT - 2, ink().panel());
-
-        graphics.fill(x + CONTENT_X, y + CONTENT_Y, x + CONTENT_R, y + CONTENT_B, ink().page());
+        Panels.panel(graphics, leftPos, topPos, leftPos + imageWidth, topPos + imageHeight);
 
         for (Tab each : Tab.values()) {
-            int top = y + TAB_Y + each.ordinal() * TAB_H;
-            boolean selected = each == tab;
-            boolean hovered = isOver(mouseX, mouseY, x + TAB_X, top, TAB_W, TAB_H - 2);
-            if (selected) {
-                // Joined to the page, with a strip of brass where it opens onto it.
-                graphics.fill(x + TAB_X, top, x + CONTENT_X, top + TAB_H - 2, ink().page());
-                graphics.fill(x + TAB_X, top, x + TAB_X + 2, top + TAB_H - 2, ACCENT);
-            } else if (hovered) {
-                graphics.fill(x + TAB_X, top, x + CONTENT_X - 2, top + TAB_H - 2, ink().bevelLight());
+            int x = leftPos + TAB_X;
+            int y = topPos + tabY(each);
+            if (each == tab) {
+                // Pressed in, the way a slot is sunk into the panel.
+                Panels.recess(graphics, x, y, TAB_W, TAB_H);
+                graphics.fill(x + 1, y + 1, x + TAB_W - 1, y + TAB_H - 1, Panels.HOVER_WASH);
+            } else {
+                Panels.button(graphics, x, y, TAB_W, TAB_H, Palette.current().panel(),
+                        isOver(mouseX, mouseY, x, y, TAB_W, TAB_H));
             }
-            graphics.blit(each.icon, x + TAB_X + (TAB_W - 16) / 2, top + 4, 0, 0, 16, 16, 16, 16);
+            graphics.blit(each.icon, x + (TAB_W - 16) / 2, y + 3, 0, 0, 16, 16, 16, 16);
         }
 
-        // The two balances, in wells, and a rule under them.
-        drawBalance(graphics, x + INNER_X, y + BALANCE_Y, text("purse"), menu.purse());
-        drawBalance(graphics, x + INNER_X + BALANCE_W + PAD, y + BALANCE_Y, text("savings"), menu.savings());
-        graphics.fill(x + INNER_X, y + RULE_Y, x + INNER_X + INNER_W, y + RULE_Y + 1, ink().rule());
-
-        if (amount.visible) {
-            graphics.fill(x + INNER_X, y + ROW_Y, x + INNER_X + INNER_W - CONFIRM_W - 4, y + ROW_Y + ROW_H, ink().well());
-        }
+        drawBalance(graphics, leftPos + CONTENT_X, topPos + BALANCE_Y, text("purse"), menu.purse());
+        drawBalance(graphics, leftPos + CONTENT_X + BALANCE_W + GAP, topPos + BALANCE_Y, text("savings"),
+                menu.savings());
     }
 
+    /** A balance in a sunken well, written the way the shop writes inside its grid. */
     private void drawBalance(GuiGraphics graphics, int x, int y, Component label, long credits) {
-        graphics.fill(x, y, x + BALANCE_W, y + BALANCE_H, ink().well());
-        graphics.drawString(font, label, x + 5, y + 4, ink().muted(), false);
-        graphics.blit(COIN, x + 5, y + 15, 0, 0, 9, 9, 9, 9);
+        Panels.recess(graphics, x, y, BALANCE_W, BALANCE_H);
+        graphics.drawString(font, label, x + 4, y + 4, IN_WELL, true);
+        graphics.blit(COIN, x + 4, y + 15, 0, 0, 9, 9, 9, 9);
         String figure = CreditFormat.of(credits);
-        int room = BALANCE_W - 22;
+        int room = BALANCE_W - 20;
         // Shrinks rather than overflows: at the cap the figure is wider than the well.
         float scale = Math.min(1.0F, room / (float) font.width(figure));
         graphics.pose().pushPose();
-        graphics.pose().translate(x + 17, y + 16, 0);
+        graphics.pose().translate(x + 16, y + 16, 0);
         graphics.pose().scale(scale, scale, 1.0F);
-        graphics.drawString(font, figure, 0, 0, ink().gold(), false);
+        graphics.drawString(font, figure, 0, 0, SUM, true);
         graphics.pose().popPose();
     }
 
@@ -218,66 +212,63 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
 
     @Override
     protected void renderLabels(@NotNull GuiGraphics graphics, int mouseX, int mouseY) {
-        graphics.drawString(font, title, titleLabelX, titleLabelY, ink().text(), false);
+        graphics.drawString(font, title, titleLabelX, titleLabelY, Panels.label(), false);
         for (Tab each : Tab.values()) {
             Component label = text("tile." + each.key);
-            int top = TAB_Y + each.ordinal() * TAB_H;
             graphics.pose().pushPose();
-            graphics.pose().translate(TAB_X + TAB_W / 2.0F, top + 23, 0);
-            float scale = Math.min(0.75F, (TAB_W - 4) / (float) font.width(label));
+            graphics.pose().translate(TAB_X + TAB_W / 2.0F, tabY(each) + 22, 0);
+            float scale = Math.min(0.6F, (TAB_W - 4) / (float) font.width(label));
             graphics.pose().scale(scale, scale, 1.0F);
-            graphics.drawString(font, label, -font.width(label) / 2, 0, each == tab ? ink().text() : ink().muted(), false);
+            graphics.drawString(font, label, -font.width(label) / 2, 0, Panels.label(), false);
             graphics.pose().popPose();
         }
     }
 
-    /** Deposit or withdraw: a card per share with what it comes to, then a typed amount. */
+    /** Deposit or withdraw: a button per share with what it comes to, then a typed amount. */
     private void renderMove(GuiGraphics graphics, int mouseX, int mouseY, boolean deposit) {
         long of = deposit ? menu.free() : menu.savings();
         drawPageTitle(graphics, text(deposit ? "tile.deposit" : "tile.withdraw"));
 
         List<Share> shares = deposit ? DEPOSIT_SHARES : WITHDRAW_SHARES;
-        int cardW = (INNER_W - PAD * (shares.size() - 1)) / shares.size();
+        int cardW = cardWidth(shares);
         for (int i = 0; i < shares.size(); i++) {
             Share share = shares.get(i);
             long sum = CreditMath.percentOf(of, share.percent(), RoundingMode.FLOOR);
-            int x = leftPos + INNER_X + i * (cardW + PAD);
+            int x = leftPos + CONTENT_X + i * (cardW + GAP);
             int y = topPos + BODY_Y;
             boolean enabled = sum > 0;
-            boolean hovered = enabled && isOver(mouseX, mouseY, x, y, cardW, CARD_H);
-            graphics.fill(x, y, x + cardW, y + CARD_H, enabled ? (hovered ? ink().cardHover() : ink().card()) : ink().disabled());
-            graphics.fill(x, y + CARD_H - 2, x + cardW, y + CARD_H,
-                    enabled ? (deposit ? DEPOSIT : WITHDRAW) : ink().disabled());
-            // Shrunk to fit, as a translation may run longer than the card is wide.
+            control(graphics, x, y, cardW, CARD_H, enabled ? CONTROL_FACE : DISABLED_FACE,
+                    enabled && isOver(mouseX, mouseY, x, y, cardW, CARD_H));
+            // Shrunk to fit, as a translation may run longer than the button is wide.
             Component name = text(share.key());
-            float fit = Math.min(1.0F, (cardW - 6) / (float) font.width(name));
-            graphics.pose().pushPose();
-            graphics.pose().translate(x + cardW / 2.0F, y + 5, 0);
-            graphics.pose().scale(fit, fit, 1.0F);
-            graphics.drawString(font, name, -font.width(name) / 2, 0, enabled ? ink().text() : ink().muted(), false);
-            graphics.pose().popPose();
-            String figure = CreditFormat.of(sum);
-            graphics.drawString(font, figure, x + (cardW - font.width(figure)) / 2, y + 16,
-                    enabled ? ink().gold() : ink().muted(), false);
+            centered(graphics, name, x + cardW / 2, y + 3, cardW - 4, enabled ? ON_FACE : ON_DISABLED);
+            centered(graphics, Component.literal(CreditFormat.of(sum)), x + cardW / 2, y + 13, cardW - 4,
+                    enabled ? SUM : ON_DISABLED);
         }
+
+        // The field, framed like the shop's search box.
+        int fieldR = leftPos + CONTENT_R - CONFIRM_W - 4;
+        boolean typing = amount.isFocused();
+        graphics.fill(leftPos + CONTENT_X - 1, topPos + ROW_Y - 1, fieldR + 1, topPos + ROW_Y + ROW_H + 1,
+                typing ? 0xFFFFFFFF : 0xFFA0A0A0);
+        graphics.fill(leftPos + CONTENT_X, topPos + ROW_Y, fieldR, topPos + ROW_Y + ROW_H, 0xFF000000);
 
         long typed = typed();
         boolean enabled = typed > 0 && typed <= of;
-        int x = leftPos + INNER_X + INNER_W - CONFIRM_W;
+        int x = leftPos + CONTENT_R - CONFIRM_W;
         int y = topPos + ROW_Y;
-        boolean hovered = enabled && isOver(mouseX, mouseY, x, y, CONFIRM_W, ROW_H);
-        int face = enabled ? (deposit ? DEPOSIT : WITHDRAW) : ink().disabled();
-        graphics.fill(x, y, x + CONFIRM_W, y + ROW_H, hovered ? face + 0x00181818 : face);
-        Component label = text(deposit ? "deposit" : "withdraw");
-        graphics.drawString(font, label, x + (CONFIRM_W - font.width(label)) / 2, y + (ROW_H - 8) / 2,
-                enabled ? 0xFFFFFFFF : ink().muted(), false);
+        control(graphics, x, y, CONFIRM_W, ROW_H,
+                enabled ? (deposit ? DEPOSIT_FACE : WITHDRAW_FACE) : DISABLED_FACE,
+                enabled && isOver(mouseX, mouseY, x, y, CONFIRM_W, ROW_H));
+        centered(graphics, text(deposit ? "deposit" : "withdraw"), x + CONFIRM_W / 2, y + TEXT_Y,
+                CONFIRM_W - 4, enabled ? ON_FACE : ON_DISABLED);
         if (typed > 0) {
             // What "1.5k" came to, so nobody deposits a thousand times what they meant.
-            Component reads = text("amount_reads", CreditFormat.of(typed));
-            graphics.drawString(font, reads, leftPos + INNER_X, topPos + ROW_Y + ROW_H + 3, ink().muted(), false);
+            graphics.drawString(font, text("amount_reads", CreditFormat.of(typed)),
+                    leftPos + CONTENT_X, topPos + ROW_Y + ROW_H + 3, Panels.label(), false);
         }
 
-        // What the page is for, wrapped to it: one line in English, two in Spanish.
+        // What the page is for, wrapped to it.
         List<Component> footer = new ArrayList<>();
         footer.add(text(deposit ? "deposit_lore" : "withdraw_lore"));
         long promised = menu.purse() - menu.free();
@@ -290,7 +281,7 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
             footer.add(text("deposit_interest", percent(first.basisPoints()), CreditFormat.of(first.upTo())));
             footer.add(text("interest_in", duration(ClientBankState.millisUntilInterest())));
         }
-        drawLines(graphics, footer, FOOTER_Y + LINE);
+        drawLines(graphics, footer, FOOTER_Y);
     }
 
     private void renderRecent(GuiGraphics graphics) {
@@ -298,7 +289,8 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
         BankStatePayload state = ClientBankState.state();
         List<BankMovement> recent = state == null ? List.of() : state.recent();
         if (recent.isEmpty()) {
-            graphics.drawString(font, text("recent.none"), leftPos + INNER_X, topPos + BODY_Y, ink().muted(), false);
+            graphics.drawString(font, text("recent.none"), leftPos + CONTENT_X, topPos + BODY_Y,
+                    Panels.label(), false);
             return;
         }
         long now = System.currentTimeMillis();
@@ -307,21 +299,18 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
         for (int i = recent.size() - 1; i >= 0 && y + 8 <= topPos + CONTENT_B; i--) {
             BankMovement movement = recent.get(i);
             boolean out = movement.kind() == BankMovement.Kind.WITHDRAWAL;
-            String sign = out ? "- " : "+ ";
-            int color = out ? ink().negative() : ink().positive();
-            String figure = sign + CreditFormat.of(movement.amount());
-            graphics.drawString(font, figure, leftPos + INNER_X, y, color, false);
-            // Right-aligned, and shrunk into whatever the figure leaves: a ten-digit
-            // sum beside "depósito · 12 h" was running straight through it.
+            String figure = (out ? "- " : "+ ") + CreditFormat.of(movement.amount());
+            graphics.drawString(font, figure, leftPos + CONTENT_X, y, out ? Panels.negative() : Panels.positive(),
+                    false);
+            // Right-aligned, and shrunk into whatever the figure leaves.
             Component what = text("recent." + movement.kind().name().toLowerCase(Locale.ROOT),
                     ago(now - movement.time()));
-            int room = INNER_W - font.width(figure) - 8;
+            int room = CONTENT_W - font.width(figure) - 8;
             float fit = Math.min(1.0F, room / (float) font.width(what));
-            int right = leftPos + INNER_X + INNER_W;
             graphics.pose().pushPose();
-            graphics.pose().translate(right, y + (1.0F - fit) * 4, 0);
+            graphics.pose().translate(leftPos + CONTENT_R, y + (1.0F - fit) * 4, 0);
             graphics.pose().scale(fit, fit, 1.0F);
-            graphics.drawString(font, what, -font.width(what), 0, ink().muted(), false);
+            graphics.drawString(font, what, -font.width(what), 0, Panels.label(), false);
             graphics.pose().popPose();
             y += LINE;
         }
@@ -340,51 +329,73 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
                 lines.add(text("info.interest_off"));
             } else {
                 lines.add(text("info.interest_every", duration(state.interestPeriod())));
-                lines.add(text("interest_in", duration(ClientBankState.millisUntilInterest()))
-                        .withStyle(ChatFormatting.AQUA));
+                lines.add(text("interest_in", duration(ClientBankState.millisUntilInterest())));
                 long from = 0;
                 for (InterestTranches.Tranche tranche : state.tranches()) {
-                    lines.add((from == 0
+                    lines.add(from == 0
                             ? text("info.tranche_first", CreditFormat.of(tranche.upTo()), percent(tranche.basisPoints()))
                             : text("info.tranche_next", CreditFormat.of(from), CreditFormat.of(tranche.upTo()),
-                            percent(tranche.basisPoints())))
-                            .withStyle(ChatFormatting.YELLOW));
+                            percent(tranche.basisPoints())));
                     from = tranche.upTo();
                 }
-                lines.add(text("info.max_interest", CreditFormat.of(new InterestTranches(state.tranches()).maxInterest()),
-                        CreditFormat.of(from)));
+                lines.add(text("info.max_interest",
+                        CreditFormat.of(new InterestTranches(state.tranches()).maxInterest()), CreditFormat.of(from)));
             }
         }
         drawLines(graphics, lines, BODY_Y);
     }
 
     private void drawPageTitle(GuiGraphics graphics, Component title) {
-        graphics.drawString(font, title, leftPos + INNER_X, topPos + PAGE_Y, ink().text(), false);
+        graphics.drawString(font, title, leftPos + CONTENT_X, topPos + PAGE_Y, Panels.label(), false);
     }
 
     /** Lines wrapped to the page, from {@code fromY} down, stopping at its foot. */
     private void drawLines(GuiGraphics graphics, List<Component> lines, int fromY) {
         int y = topPos + fromY;
         for (Component line : lines) {
-            for (FormattedCharSequence wrapped : font.split(line, INNER_W)) {
+            for (FormattedCharSequence wrapped : font.split(line, CONTENT_W)) {
                 if (y + 8 > topPos + CONTENT_B) {
                     return;
                 }
-                graphics.drawString(font, wrapped, leftPos + INNER_X, y, ink().muted(), false);
+                graphics.drawString(font, wrapped, leftPos + CONTENT_X, y, Panels.label(), false);
                 y += LINE;
             }
         }
     }
 
+    /** The outlined, flat button the shop and the exchange use. */
+    private static void control(GuiGraphics graphics, int x, int y, int width, int height, int face,
+                                boolean hovered) {
+        graphics.fill(x - 1, y - 1, x + width + 1, y + height + 1, Panels.OUTLINE);
+        graphics.fill(x, y, x + width, y + height, hovered ? face + 0x00191919 : face);
+    }
+
+    /** Text centred on {@code centerX}, shrunk to {@code room} if it would not fit. */
+    private void centered(GuiGraphics graphics, Component text, int centerX, int y, int room, int color) {
+        float fit = Math.min(1.0F, room / (float) font.width(text));
+        graphics.pose().pushPose();
+        graphics.pose().translate(centerX, y + (1.0F - fit) * 4, 0);
+        graphics.pose().scale(fit, fit, 1.0F);
+        graphics.drawString(font, text, -font.width(text) / 2, 0, color, false);
+        graphics.pose().popPose();
+    }
+
     private void renderTabTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
         for (Tab each : Tab.values()) {
-            int top = topPos + TAB_Y + each.ordinal() * TAB_H;
-            if (each != tab && isOver(mouseX, mouseY, leftPos + TAB_X, top, TAB_W, TAB_H - 2)) {
+            if (each != tab && isOver(mouseX, mouseY, leftPos + TAB_X, topPos + tabY(each), TAB_W, TAB_H)) {
                 graphics.renderTooltip(font, text("tile." + each.key), mouseX, mouseY);
                 return;
             }
         }
         renderTooltip(graphics, mouseX, mouseY);
+    }
+
+    private static int tabY(Tab tab) {
+        return TAB_Y + tab.ordinal() * (TAB_H + TAB_GAP);
+    }
+
+    private static int cardWidth(List<Share> shares) {
+        return (CONTENT_W - GAP * (shares.size() - 1)) / shares.size();
     }
 
     // --- Input -------------------------------------------------------------------------------
@@ -394,7 +405,7 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
         int x = (int) mouseX;
         int y = (int) mouseY;
         for (Tab each : Tab.values()) {
-            if (isOver(x, y, leftPos + TAB_X, topPos + TAB_Y + each.ordinal() * TAB_H, TAB_W, TAB_H - 2)) {
+            if (isOver(x, y, leftPos + TAB_X, topPos + tabY(each), TAB_W, TAB_H)) {
                 if (each != tab) {
                     playClick();
                     select(each);
@@ -406,10 +417,10 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
             boolean deposit = tab == Tab.DEPOSIT;
             long of = deposit ? menu.free() : menu.savings();
             List<Share> shares = deposit ? DEPOSIT_SHARES : WITHDRAW_SHARES;
-            int cardW = (INNER_W - PAD * (shares.size() - 1)) / shares.size();
+            int cardW = cardWidth(shares);
             for (int i = 0; i < shares.size(); i++) {
                 Share share = shares.get(i);
-                if (isOver(x, y, leftPos + INNER_X + i * (cardW + PAD), topPos + BODY_Y, cardW, CARD_H)) {
+                if (isOver(x, y, leftPos + CONTENT_X + i * (cardW + GAP), topPos + BODY_Y, cardW, CARD_H)) {
                     if (CreditMath.percentOf(of, share.percent(), RoundingMode.FLOOR) > 0) {
                         playClick();
                         send(BankActionPayload.share(deposit, share.percent()));
@@ -417,13 +428,13 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
                     return true;
                 }
             }
-            if (isOver(x, y, leftPos + INNER_X, topPos + ROW_Y, INNER_W - CONFIRM_W - 4, ROW_H)) {
+            if (isOver(x, y, leftPos + CONTENT_X, topPos + ROW_Y, CONTENT_W - CONFIRM_W - 4, ROW_H)) {
                 setFocused(amount);
                 amount.setFocused(true);
                 return true;
             }
             amount.setFocused(false);
-            if (isOver(x, y, leftPos + INNER_X + INNER_W - CONFIRM_W, topPos + ROW_Y, CONFIRM_W, ROW_H)) {
+            if (isOver(x, y, leftPos + CONTENT_R - CONFIRM_W, topPos + ROW_Y, CONFIRM_W, ROW_H)) {
                 confirm();
                 return true;
             }
@@ -487,11 +498,6 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
     /** A rate in basis points as a percentage: 200 is "2", 125 is "1.25". */
     private static String percent(long basisPoints) {
         return BigDecimal.valueOf(basisPoints).movePointLeft(2).stripTrailingZeros().toPlainString();
-    }
-
-    /** The colors to draw with, light or dark; looked up each frame, so a change shows at once. */
-    private static Palette ink() {
-        return Palette.current();
     }
 
     /** How long ago, short enough for a statement line: now, 5 min, 7 h, 2 days. */

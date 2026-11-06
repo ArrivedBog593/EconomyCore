@@ -32,33 +32,17 @@ import java.util.Optional;
  * @param label       text on the panel
  * @param positive    a balance, credits coming in
  * @param negative    a shortfall, credits going out
- * @param frame       the bank's outer edge
- * @param page        the bank's open page
- * @param well        the bank's balance wells and its amount field
- * @param card        a share card
- * @param cardHover   a share card under the mouse
- * @param rule        a dividing line
- * @param text        the bank's main text
- * @param muted       the bank's secondary text
- * @param gold        a sum of credits
- * @param disabled    a card or button that would be refused
  */
 public record Palette(int panel, int bevelLight, int bevelDark, int slotFill, int slotDark,
-                      int label, int positive, int negative,
-                      int frame, int page, int well, int card, int cardHover, int rule,
-                      int text, int muted, int gold, int disabled) {
+                      int label, int positive, int negative) {
 
     public static final Palette LIGHT = new Palette(
             0xFFC6C6C6, 0xFFFFFFFF, 0xFF555555, 0xFF8B8B8B, 0xFF373737,
-            0xFF404040, 0xFF2E7D32, 0xFF9C1C1C,
-            0xFF000000, 0xFFD4D4D4, 0xFFEDEDED, 0xFFB9B9B9, 0xFFA9A9A9, 0xFF9A9A9A,
-            0xFF2A2A2A, 0xFF5E5E5E, 0xFFA8740E, 0xFFC4C4C4);
+            0xFF404040, 0xFF2E7D32, 0xFF9C1C1C);
 
     public static final Palette DARK = new Palette(
             0xFF2B2B30, 0xFF45454C, 0xFF18181B, 0xFF1E1E22, 0xFF0F0F12,
-            0xFFD8D8DC, 0xFF6FCF73, 0xFFFF6B6B,
-            0xFF0E0E10, 0xFF2C2C31, 0xFF1B1B1F, 0xFF38383F, 0xFF46464F, 0xFF3E3E46,
-            0xFFE6E6EA, 0xFF9A9AA4, 0xFFFFC94A, 0xFF3A3A40);
+            0xFFD8D8DC, 0xFF6FCF73, 0xFFFF6B6B);
 
     /**
      * Where vanilla's chest window is filled, away from its frame and its
