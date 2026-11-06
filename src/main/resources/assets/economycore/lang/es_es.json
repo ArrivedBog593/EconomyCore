@@ -8,6 +8,7 @@
   "item.economycore.exchange_clerk_spawn_egg": "Huevo generador de cajero de la casa de cambio",
   "item.economycore.shop_clerk_spawn_egg": "Huevo generador de dependiente de la tienda",
   "item.economycore.banker_spawn_egg": "Huevo generador de banquero",
+  "item.economycore.merchant_pass": "Pase de mercader",
 
   "entity.economycore.exchange_clerk": "Cajero de la casa de cambio",
   "entity.economycore.shop_clerk": "Dependiente de la tienda",
@@ -37,6 +38,17 @@
   "economycore.staff.removed_from_you": "Ya no formas parte del staff.",
   "economycore.welcome": "¡Te damos la bienvenida! Empiezas con %s créditos.",
   "economycore.death_loss": "Perdiste %s créditos de tu monedero. Los créditos del banco están a salvo.",
+  "economycore.pass.confirm": "Úsalo otra vez para gastar este pase: %s horas de privilegios de mercader",
+  "economycore.pass.activated": "Pase de mercader activo: quedan %s",
+  "economycore.pass.expired": "Tu pase de mercader ha caducado",
+  "economycore.pass.days_hours": "%s d %s h",
+  "economycore.pass.hours": "%s h",
+  "economycore.pass.minutes": "%s min",
+  "economycore.pass.tooltip.duration": "%s horas de privilegios, que cuentan aunque no estés",
+  "economycore.pass.tooltip.commands": "/bank, /exchange y /shop desde cualquier sitio",
+  "economycore.pass.tooltip.death": "No pierdes tu monedero al morir",
+  "economycore.pass.tooltip.stacks": "Usar otro suma sus horas a las que quedan",
+  "economycore.pass.tooltip.use": "Úsalo dos veces para gastarlo",
 
   "economycore.admin.shop.title": "Ajustes de la tienda",
   "economycore.admin.shop.price": "Precio",
@@ -209,6 +221,7 @@
   "economycore.my_bank.time.days": "%s días",
   "economycore.hud.purse": "Monedero: %s",
   "economycore.hud.bank": "Banco: %s",
+  "economycore.hud.pass": "Pase: %s",
   "economycore.interest.paid": "El banco te pagó %s créditos de interés.",
 
   "economycore.bank.off": "El banco del servidor está apagado: ningún mod instalado lo usa y la configuración no lo mantiene encendido. Lo que cobra el servidor sale de circulación.",

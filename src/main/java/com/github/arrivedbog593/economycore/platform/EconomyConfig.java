@@ -44,6 +44,9 @@ public final class EconomyConfig {
     /** Each slice of a balance and its rate, as {@code "upTo:percent"}. */
     public static final ModConfigSpec.ConfigValue<List<? extends String>> INTEREST_TRANCHES;
 
+    /** How many real hours one merchant's pass lasts. */
+    public static final ModConfigSpec.IntValue PASS_HOURS;
+
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
         builder.push("bank");
@@ -97,6 +100,14 @@ public final class EconomyConfig {
                         "have decimals, such as \"1000000:0.5\". If any line cannot be read, nothing is paid.")
                 .defineListAllowEmpty("tranches", List.of("10000000:2", "15000000:1"), () -> "1000:1",
                         line -> line instanceof String);
+        builder.pop();
+        builder.push("pass");
+        PASS_HOURS = builder
+                .comment("How many real hours a merchant's pass lasts once used, counting while the player is",
+                        "offline. Using another adds the same again. While it lasts, the player may use /bank,",
+                        "/exchange and /shop from anywhere even with them switched off, loses nothing on dying,",
+                        "and other mods may give them more.")
+                .defineInRange("durationHours", 96, 1, 24 * 365);
         builder.pop();
         SPEC = builder.build();
     }

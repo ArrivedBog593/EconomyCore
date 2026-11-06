@@ -9,7 +9,9 @@ import com.github.arrivedbog593.economycore.platform.command.CreditCommands;
 import com.github.arrivedbog593.economycore.platform.command.EconomyCommands;
 import com.github.arrivedbog593.economycore.platform.command.HelpCommands;
 import com.github.arrivedbog593.economycore.platform.command.StaffCommands;
+import com.github.arrivedbog593.economycore.platform.registry.EconomyItems;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.AddReloadListenerEvent;
@@ -106,7 +108,27 @@ public final class EconomyEvents {
             storage.setDirty();
         }
 
+        listMerchantPass(server);
         MANAGER.rebuild(server);
+    }
+
+    /** What the pass is first listed at, switched off, until the owner prices it. */
+    private static final long PASS_LISTING_PRICE = 100_000;
+
+    /**
+     * Puts the merchant's pass in the shop the first time a world starts with
+     * this version: switched off, at a placeholder price, so the owner finds
+     * it there and decides whether to sell it, for how much and how many. Once
+     * only: removing it from the shop keeps it removed.
+     */
+    private static void listMerchantPass(MinecraftServer server) {
+        EconomyData data = EconomyData.get(server);
+        if (data.passListed()) {
+            return;
+        }
+        int number = data.addShopEntry(new ItemStack(EconomyItems.MERCHANT_PASS.get()), PASS_LISTING_PRICE);
+        data.updateShopEntry(number, entry -> entry.withEnabled(false));
+        data.setPassListed();
     }
 
     /**

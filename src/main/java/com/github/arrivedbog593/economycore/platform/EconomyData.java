@@ -69,6 +69,10 @@ public final class EconomyData extends SavedData {
     private static final String KEY_DEATH_LOSS_PERCENT = "death_loss_percent";
     private static final String KEY_DEATH_LOSS_COMBAT_ONLY = "death_loss_combat_only";
     private static final String KEY_NEXT_INTEREST = "next_interest_at";
+    private static final String KEY_PASSES = "merchant_passes";
+    private static final String KEY_PASS_PLAYER = "player";
+    private static final String KEY_PASS_UNTIL = "until";
+    private static final String KEY_PASS_LISTED = "merchant_pass_listed";
     private static final String KEY_PURCHASES = "shop_purchases";
     private static final String KEY_PURCHASE_DAY = "day";
     private static final String KEY_PURCHASE_LINES = "lines";
@@ -108,6 +112,12 @@ public final class EconomyData extends SavedData {
 
     /** The day {@link #purchasesToday} counts, in days since the epoch. */
     private long purchaseDay;
+
+    /** When each player's merchant's pass runs out, in milliseconds since the epoch. */
+    private final Map<UUID, Long> passes = new HashMap<>();
+
+    /** Whether the pass has been put in the shop, switched off, for the owner to price. Done once per world. */
+    private boolean passListed;
 
     /** When interest is next paid, in milliseconds since the epoch; zero until it is first scheduled. */
     private long nextInterestAt;
@@ -152,6 +162,12 @@ public final class EconomyData extends SavedData {
         data.deathLossPercent = Math.clamp(tag.getInt(KEY_DEATH_LOSS_PERCENT), 0, DeathLoss.MAX_PERCENT);
         data.deathLossCombatOnly = tag.getBoolean(KEY_DEATH_LOSS_COMBAT_ONLY);
         data.nextInterestAt = Math.max(0, tag.getLong(KEY_NEXT_INTEREST));
+        ListTag passList = tag.getList(KEY_PASSES, Tag.TAG_COMPOUND);
+        for (int i = 0; i < passList.size(); i++) {
+            CompoundTag pass = passList.getCompound(i);
+            data.passes.put(pass.getUUID(KEY_PASS_PLAYER), pass.getLong(KEY_PASS_UNTIL));
+        }
+        data.passListed = tag.getBoolean(KEY_PASS_LISTED);
         CompoundTag purchases = tag.getCompound(KEY_PURCHASES);
         data.purchaseDay = purchases.getLong(KEY_PURCHASE_DAY);
         ListTag lines = purchases.getList(KEY_PURCHASE_LINES, Tag.TAG_COMPOUND);
@@ -181,6 +197,19 @@ public final class EconomyData extends SavedData {
         tag.putInt(KEY_DEATH_LOSS_PERCENT, deathLossPercent);
         tag.putBoolean(KEY_DEATH_LOSS_COMBAT_ONLY, deathLossCombatOnly);
         tag.putLong(KEY_NEXT_INTEREST, nextInterestAt);
+        ListTag passList = new ListTag();
+        long now = System.currentTimeMillis();
+        passes.forEach((player, until) -> {
+            // Spent passes are not worth keeping.
+            if (until > now) {
+                CompoundTag pass = new CompoundTag();
+                pass.putUUID(KEY_PASS_PLAYER, player);
+                pass.putLong(KEY_PASS_UNTIL, until);
+                passList.add(pass);
+            }
+        });
+        tag.put(KEY_PASSES, passList);
+        tag.putBoolean(KEY_PASS_LISTED, passListed);
         CompoundTag purchases = new CompoundTag();
         purchases.putLong(KEY_PURCHASE_DAY, purchaseDay);
         ListTag lines = new ListTag();
@@ -474,6 +503,35 @@ public final class EconomyData extends SavedData {
             return 0;
         }
         return purchasesToday.getOrDefault(entryId, Map.of()).getOrDefault(buyer, 0);
+    }
+
+    // --- Merchant's passes -------------------------------------------------
+
+    /** When this player's pass runs out, or zero if they have never had one. */
+    public long passUntil(UUID player) {
+        return passes.getOrDefault(player, 0L);
+    }
+
+    /**
+     * Adds {@code millis} to a player's pass: from now if it had run out, from
+     * when it would have run out if it had not, so using two adds both.
+     *
+     * @return when it now runs out
+     */
+    public long extendPass(UUID player, long millis, long now) {
+        long until = Math.max(now, passUntil(player)) + millis;
+        passes.put(player, until);
+        setDirty();
+        return until;
+    }
+
+    public boolean passListed() {
+        return passListed;
+    }
+
+    public void setPassListed() {
+        this.passListed = true;
+        setDirty();
     }
 
     /** Forgets yesterday's purchases when a new day has begun. */

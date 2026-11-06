@@ -64,6 +64,16 @@ The bank can pay **interest**, off by default: every so many real hours, to ever
 savings, by tranches, as SkyBlock does (2% on the first 10,000,000 and 1% up to 15,000,000
 unless the config says otherwise). Every credit it pays is new money.
 
+A **merchant's pass**, like SkyBlock's booster cookie, is used up for 96 real hours of
+privileges (counting while the player is away; using another adds to what is left): `/bank`,
+`/exchange` and `/shop` from anywhere even when they are switched off, and keeping the purse on
+dying. Other mods can grant more with it through the API. It is put in the shop the first time a
+world starts, switched off, for the owner to price and switch on.
+
+Each shop entry can be **switched off**, staying in the window but not for sale; given a
+**stock** that runs out, which can **fill back up** every so many hours; and a **limit** on how
+many times each player may buy it a day.
+
 ## Commands
 
 | Command                          | Who                             | What it does                                   |
@@ -80,7 +90,8 @@ unless the config says otherwise). Every credit it pays is new money.
 
 `/economycore` also covers prices (`values`), the buyback surcharge (`spread`), what players
 lose from their purse when they die (`deathloss`, off by default, and `deathloss combat true`
-to charge only deaths at the hands of a mob or a player), the shop (`shop`), the
+to charge only deaths at the hands of a mob or a player), the shop (`shop`, with `enable`,
+`disable`, `stock`, `restock`, `limit` and `info` for each entry), the
 server bank (`bank`) and the staff list (`staff`). `/economycore help` lists them for whoever
 may use them.
 
@@ -100,6 +111,7 @@ for that world.
 | `interest.enabled`       | `false` | Pay interest on what players keep in the bank                       |
 | `interest.periodHours`   | `31`    | How many real hours apart it is paid                                |
 | `interest.tranches`      | `["10000000:2", "15000000:1"]` | Each slice of a balance and its rate, as `"upTo:percent"`; nothing above the last |
+| `pass.durationHours`     | `96`    | How many real hours a merchant's pass lasts                         |
 
 ## The server bank and the server's income
 

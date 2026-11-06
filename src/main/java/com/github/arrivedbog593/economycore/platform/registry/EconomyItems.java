@@ -2,8 +2,10 @@ package com.github.arrivedbog593.economycore.platform.registry;
 
 import com.github.arrivedbog593.economycore.EconomyCore;
 import com.github.arrivedbog593.economycore.platform.item.AdminKeyItem;
+import com.github.arrivedbog593.economycore.platform.item.MerchantPassItem;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Rarity;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.common.DeferredSpawnEggItem;
 import net.neoforged.neoforge.registries.DeferredItem;
@@ -48,6 +50,13 @@ public final class EconomyItems {
      * rank, and the staff list is the economy's. The tables accept it too:
      * they depend on the economy, so they may.
      */
+    /**
+     * A merchant's pass, used up for days of privileges. Rare, so its name
+     * stands out in a tooltip; on sale in the shop only once the owner says.
+     */
+    public static final DeferredItem<MerchantPassItem> MERCHANT_PASS =
+            ITEMS.register("merchant_pass", () -> new MerchantPassItem(new Item.Properties().rarity(Rarity.RARE)));
+
     public static final DeferredItem<AdminKeyItem> ADMIN_KEY =
             ITEMS.register("admin_key", () -> new AdminKeyItem(new Item.Properties()));
 

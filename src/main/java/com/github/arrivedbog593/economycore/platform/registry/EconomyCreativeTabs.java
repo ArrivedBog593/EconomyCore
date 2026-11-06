@@ -25,6 +25,7 @@ public final class EconomyCreativeTabs {
                         output.accept(EconomyItems.EXCHANGE_CLERK_SPAWN_EGG.get());
                         output.accept(EconomyItems.SHOP_CLERK_SPAWN_EGG.get());
                         output.accept(EconomyItems.BANKER_SPAWN_EGG.get());
+                        output.accept(EconomyItems.MERCHANT_PASS.get());
                         // Unbound, so it works for operators and nobody else.
                         // Anyone administering without operator rights gets a
                         // bound one from the command instead.

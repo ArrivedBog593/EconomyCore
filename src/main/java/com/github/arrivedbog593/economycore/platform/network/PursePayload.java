@@ -1,6 +1,7 @@
 package com.github.arrivedbog593.economycore.platform.network;
 
 import com.github.arrivedbog593.economycore.EconomyCore;
+import com.github.arrivedbog593.economycore.api.MerchantPass;
 import com.github.arrivedbog593.economycore.api.Pocket;
 import com.github.arrivedbog593.economycore.platform.CreditStorage;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -14,14 +15,15 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * A player's own purse and bank, for the corner of their screen.
+ * A player's own purse and bank, and when their merchant's pass runs out,
+ * for the side of their screen.
  * <p>
  * Sent to that player alone, when they join and whenever either moves. A
  * scoreboard objective would have needed none of this, but every player
  * would see every other player's purse in it, and a score is an {@code int}:
  * it stops at a little over two billion.
  */
-public record PursePayload(long purse, long savings) implements CustomPacketPayload {
+public record PursePayload(long purse, long savings, long passLeft) implements CustomPacketPayload {
 
     public static final Type<PursePayload> TYPE = new Type<>(
             ResourceLocation.fromNamespaceAndPath(EconomyCore.MOD_ID, "purse"));
@@ -30,6 +32,7 @@ public record PursePayload(long purse, long savings) implements CustomPacketPayl
             StreamCodec.composite(
                     ByteBufCodecs.VAR_LONG, PursePayload::purse,
                     ByteBufCodecs.VAR_LONG, PursePayload::savings,
+                    ByteBufCodecs.VAR_LONG, PursePayload::passLeft,
                     PursePayload::new);
 
     @Override
@@ -41,7 +44,9 @@ public record PursePayload(long purse, long savings) implements CustomPacketPayl
         CreditStorage storage = CreditStorage.get(player.server);
         PacketDistributor.sendToPlayer(player, new PursePayload(
                 storage.balanceOf(player.getUUID()),
-                storage.balanceOf(player.getUUID(), Pocket.SAVINGS)));
+                storage.balanceOf(player.getUUID(), Pocket.SAVINGS),
+                // What is left, not when it ends: the client's clock is not the server's.
+                Math.max(0, MerchantPass.expiresAt(player.server, player.getUUID()) - System.currentTimeMillis())));
     }
 
     public static void handleOnClient(PursePayload payload, IPayloadContext context) {

@@ -8,6 +8,7 @@
   "item.economycore.exchange_clerk_spawn_egg": "Exchange Clerk Spawn Egg",
   "item.economycore.shop_clerk_spawn_egg": "Shop Clerk Spawn Egg",
   "item.economycore.banker_spawn_egg": "Banker Spawn Egg",
+  "item.economycore.merchant_pass": "Merchant's Pass",
 
   "entity.economycore.exchange_clerk": "Exchange Clerk",
   "entity.economycore.shop_clerk": "Shop Clerk",
@@ -37,6 +38,17 @@
   "economycore.staff.removed_from_you": "You are no longer on the staff.",
   "economycore.welcome": "Welcome! You start with %s credits.",
   "economycore.death_loss": "You lost %s credits from your purse. Credits in the bank are safe.",
+  "economycore.pass.confirm": "Use it again to spend this pass: %s hours of merchant's privileges",
+  "economycore.pass.activated": "Merchant's pass active: %s left",
+  "economycore.pass.expired": "Your merchant's pass has run out",
+  "economycore.pass.days_hours": "%s d %s h",
+  "economycore.pass.hours": "%s h",
+  "economycore.pass.minutes": "%s min",
+  "economycore.pass.tooltip.duration": "%s hours of privileges, counting while you are away",
+  "economycore.pass.tooltip.commands": "/bank, /exchange and /shop from anywhere",
+  "economycore.pass.tooltip.death": "Keep your purse when you die",
+  "economycore.pass.tooltip.stacks": "Using another adds its hours to what is left",
+  "economycore.pass.tooltip.use": "Use twice to spend it",
 
   "economycore.admin.shop.title": "Shop Settings",
   "economycore.admin.shop.price": "Price",
@@ -209,6 +221,7 @@
   "economycore.my_bank.time.days": "%s days",
   "economycore.hud.purse": "Purse: %s",
   "economycore.hud.bank": "Bank: %s",
+  "economycore.hud.pass": "Pass: %s",
   "economycore.interest.paid": "The bank paid you %s credits of interest.",
 
   "economycore.bank.off": "The server bank is off: no installed mod uses it and the config does not keep it on. What the server takes in leaves circulation.",

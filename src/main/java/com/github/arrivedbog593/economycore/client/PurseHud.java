@@ -2,6 +2,7 @@ package com.github.arrivedbog593.economycore.client;
 
 import com.github.arrivedbog593.economycore.api.CreditFormat;
 import com.github.arrivedbog593.economycore.platform.EconomyClientConfig;
+import com.github.arrivedbog593.economycore.platform.PassWatch;
 import com.github.arrivedbog593.economycore.platform.network.PursePayload;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.DeltaTracker;
@@ -13,6 +14,7 @@ import net.minecraft.world.scores.DisplaySlot;
 import net.minecraft.world.scores.Objective;
 import net.minecraft.world.scores.Scoreboard;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -42,9 +44,15 @@ public final class PurseHud {
             return;
         }
         Font font = minecraft.font;
-        List<Component> lines = List.of(
+        List<Component> lines = new ArrayList<>(List.of(
                 line("economycore.hud.purse", purse.purse()),
-                line("economycore.hud.bank", purse.savings()));
+                line("economycore.hud.bank", purse.savings())));
+        // Counted down here from when it runs out, so it ticks without the server.
+        long passLeft = ClientPurse.passLeft();
+        if (passLeft > 0) {
+            lines.add(Component.translatable("economycore.hud.pass", PassWatch.describe(passLeft)
+                    .copy().withStyle(ChatFormatting.LIGHT_PURPLE)));
+        }
         int width = 0;
         for (Component line : lines) {
             width = Math.max(width, font.width(line));

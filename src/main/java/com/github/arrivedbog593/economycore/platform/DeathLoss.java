@@ -3,6 +3,7 @@ package com.github.arrivedbog593.economycore.platform;
 import com.github.arrivedbog593.economycore.EconomyCore;
 import com.github.arrivedbog593.economycore.api.CreditFormat;
 import com.github.arrivedbog593.economycore.api.CreditMath;
+import com.github.arrivedbog593.economycore.api.MerchantPass;
 import com.github.arrivedbog593.economycore.api.TransactionType;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -61,6 +62,10 @@ public final class DeathLoss {
             return;
         }
         if (data.deathLossCombatOnly() && !inCombat(event.getSource())) {
+            return;
+        }
+        // A merchant's pass keeps the purse, as SkyBlock's cookie does.
+        if (MerchantPass.isActive(player.server, player.getUUID())) {
             return;
         }
         long lost = lossFrom(Commitments.spendable(player.server, player.getUUID()), percent);

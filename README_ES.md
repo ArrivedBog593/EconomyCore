@@ -72,6 +72,16 @@ los que tengan algo guardado, por tramos como en SkyBlock (un 2 % por los primer
 10.000.000 y un 1 % hasta 15.000.000, salvo que la configuración diga otra cosa). Cada
 crédito que paga es dinero nuevo.
 
+Un **pase de mercader**, como la booster cookie de SkyBlock, se gasta a cambio de 96 horas
+reales de privilegios (cuentan aunque el jugador no esté; usar otro suma a lo que queda):
+`/bank`, `/exchange` y `/shop` desde cualquier sitio aunque estén apagados, y no perder el
+monedero al morir. Otros mods pueden dar más con él a través de la API. Se pone en la tienda la
+primera vez que arranca un mundo, desactivado, para que el dueño le ponga precio y lo active.
+
+Cada artículo de la tienda se puede **desactivar**, y sigue en la ventana pero no se vende; tener
+**existencias** que se agotan y que se pueden **reponer** cada tantas horas; y un **límite** de
+cuántas veces al día puede comprarlo cada jugador.
+
 ## Comandos
 
 | Comando | Quién | Qué hace |
@@ -89,7 +99,8 @@ crédito que paga es dinero nuevo.
 `/economycore` también cubre los precios (`values`), el recargo de recompra (`spread`), lo que
 pierden los jugadores del monedero al morir (`deathloss`, desactivado por defecto, y
 `deathloss combat true` para que solo cuesten las muertes a manos de un mob o un jugador), la tienda
-(`shop`), el banco del servidor (`bank`) y la lista de staff (`staff`).
+(`shop`, con `enable`, `disable`, `stock`, `restock`, `limit` e `info` para cada artículo), el
+banco del servidor (`bank`) y la lista de staff (`staff`).
 `/economycore help` los muestra a quien pueda usarlos.
 
 ## Configuración
@@ -108,6 +119,7 @@ reemplaza para ese mundo.
 | `interest.enabled` | `false` | Paga interés por lo que los jugadores guardan en el banco |
 | `interest.periodHours` | `31` | Cada cuántas horas reales se paga |
 | `interest.tranches` | `["10000000:2", "15000000:1"]` | Cada tramo del saldo y lo que rinde, como `"hasta:porcentaje"`; por encima del último, nada |
+| `pass.durationHours` | `96` | Cuántas horas reales dura un pase de mercader |
 
 ## El banco del servidor y lo que cobra el servidor
 

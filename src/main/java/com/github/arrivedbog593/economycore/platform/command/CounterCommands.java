@@ -1,5 +1,6 @@
 package com.github.arrivedbog593.economycore.platform.command;
 
+import com.github.arrivedbog593.economycore.api.MerchantPass;
 import com.github.arrivedbog593.economycore.platform.EconomyConfig;
 import com.github.arrivedbog593.economycore.platform.menu.Counter;
 import com.github.arrivedbog593.economycore.platform.menu.MenuAnchor;
@@ -45,16 +46,21 @@ public final class CounterCommands {
      * Only the server's switch for now. This is the one place to ask, so a
      * later rule — the command as a perk for some players and not others —
      * goes here and nowhere else.
+     * <p>
+     * That rule is the merchant's pass: with one running, a player may open
+     * every counter from anywhere, whatever the switches say.
      */
     public static boolean mayOpen(CommandSourceStack source, Counter counter) {
-        if (source.getPlayer() == null || !EconomyConfig.SPEC.isLoaded()) {
+        ServerPlayer player = source.getPlayer();
+        if (player == null || !EconomyConfig.SPEC.isLoaded()) {
             return false;
         }
-        return switch (counter) {
+        boolean open = switch (counter) {
             case EXCHANGE -> EconomyConfig.EXCHANGE_COMMAND.get();
             case SHOP -> EconomyConfig.SHOP_COMMAND.get();
             case BANK -> EconomyConfig.BANK_COMMAND.get();
         };
+        return open || MerchantPass.isActive(source.getServer(), player.getUUID());
     }
 
     private static int open(CommandSourceStack source, Counter counter) {
