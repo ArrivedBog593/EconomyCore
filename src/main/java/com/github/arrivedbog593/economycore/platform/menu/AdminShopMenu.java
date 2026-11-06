@@ -32,12 +32,13 @@ public class AdminShopMenu extends AbstractContainerMenu {
     // Eighteen taller than it was, for the second action row: removing is a
     // button under the reprice button now, rather than a shift click on the
     // entry. Height is a layout decision here, since the frame is drawn from
-    // rectangles instead of blitted from a texture.
-    public static final int PANEL_HEIGHT = 254;
+    // rectangles instead of blitted from a texture. Then twenty-five more, for
+    // the row that sets a chosen entry's stock, restock and limit a day.
+    public static final int PANEL_HEIGHT = 279;
     public static final int INPUT_X = 8;
     public static final int INPUT_Y = 120;
-    public static final int INVENTORY_Y = 171;
-    public static final int HOTBAR_Y = 229;
+    public static final int INVENTORY_Y = 196;
+    public static final int HOTBAR_Y = 254;
 
     private final MenuAnchor anchor;
 

@@ -1,6 +1,7 @@
 package com.github.arrivedbog593.economycore.platform.network;
 
 import com.github.arrivedbog593.economycore.EconomyCore;
+import com.github.arrivedbog593.economycore.engine.CreditAccount;
 import com.github.arrivedbog593.economycore.platform.AdminNotices;
 import com.github.arrivedbog593.economycore.platform.EconomyData;
 import com.github.arrivedbog593.economycore.platform.EconomyEvents;
@@ -19,9 +20,11 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Optional;
+import java.util.function.UnaryOperator;
 
 /**
- * Adding, repricing, and removing what the shop sells.
+ * Adding, repricing, and removing what the shop sells, and the terms each
+ * entry is sold on: on or off, its stock, its restock, its limit a day.
  * <p>
  * A payload rather than a menu button because two of the three carry a price,
  * and {@code clickMenuButton} has only an integer to work with. Packing a
@@ -34,7 +37,8 @@ import java.util.Optional;
  *
  * @param kind   what is being asked for
  * @param number the catalog position for repricing and removing
- * @param price  credits for adding and repricing
+ * @param price  credits for adding and repricing; for the terms, the new
+ *               figure: a stock (or {@link ShopEntry#UNLIMITED}), hours, a limit
  */
 public record AdminShopActionPayload(int kind, int number, long price)
         implements CustomPacketPayload {
@@ -42,6 +46,17 @@ public record AdminShopActionPayload(int kind, int number, long price)
     public static final int KIND_ADD = 0;
     public static final int KIND_REPRICE = 1;
     public static final int KIND_REMOVE = 2;
+    public static final int KIND_ENABLE = 3;
+    public static final int KIND_DISABLE = 4;
+    public static final int KIND_STOCK = 5;
+    public static final int KIND_RESTOCK = 6;
+    public static final int KIND_LIMIT = 7;
+
+    /** The most hours apart a restock may be set, a year, as the command allows. */
+    private static final long MAX_RESTOCK_HOURS = 24 * 365;
+
+    /** The highest limit a day, as the command allows. */
+    private static final long MAX_DAILY_LIMIT = 1_000_000;
 
     public static final Type<AdminShopActionPayload> TYPE = new Type<>(
             ResourceLocation.fromNamespaceAndPath(EconomyCore.MOD_ID, "admin_shop_action"));
@@ -70,6 +85,11 @@ public record AdminShopActionPayload(int kind, int number, long price)
         return new AdminShopActionPayload(KIND_REMOVE, number, 0);
     }
 
+    /** One of the terms an entry is sold on: on or off, stock, restock hours, limit a day. */
+    public static AdminShopActionPayload terms(int kind, int number, long value) {
+        return new AdminShopActionPayload(kind, number, value);
+    }
+
     public static void handleOnServer(AdminShopActionPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             if (!(context.player() instanceof ServerPlayer player)) {
@@ -89,6 +109,7 @@ public record AdminShopActionPayload(int kind, int number, long price)
                 case KIND_ADD -> add(payload, player, menu);
                 case KIND_REPRICE -> reprice(payload, player);
                 case KIND_REMOVE -> remove(payload, player);
+                case KIND_ENABLE, KIND_DISABLE, KIND_STOCK, KIND_RESTOCK, KIND_LIMIT -> terms(payload, player);
                 default -> {
                 }
             }
@@ -133,6 +154,62 @@ public record AdminShopActionPayload(int kind, int number, long price)
                 "economycore.command.shop.repriced",
                 updated.get().stack().getHoverName(), payload.price(),
                 payload.number()));
+    }
+
+    /**
+     * Changes the terms an entry is sold on. Each figure is checked against
+     * what the matching command accepts, so the window can do nothing a
+     * command could not.
+     */
+    private static void terms(AdminShopActionPayload payload, ServerPlayer player) {
+        long value = payload.price();
+        long now = System.currentTimeMillis();
+        UnaryOperator<ShopEntry> change;
+        String key;
+        switch (payload.kind()) {
+            case KIND_ENABLE -> {
+                change = entry -> entry.withEnabled(true);
+                key = "economycore.command.shop.enabled";
+            }
+            case KIND_DISABLE -> {
+                change = entry -> entry.withEnabled(false);
+                key = "economycore.command.shop.disabled";
+            }
+            case KIND_STOCK -> {
+                if (value < ShopEntry.UNLIMITED || value > CreditAccount.MAX_BALANCE) {
+                    return;
+                }
+                change = entry -> entry.withStock(value, now);
+                key = value == ShopEntry.UNLIMITED
+                        ? "economycore.command.shop.stock_unlimited" : "economycore.command.shop.stock_set";
+            }
+            case KIND_RESTOCK -> {
+                if (value < 0 || value > MAX_RESTOCK_HOURS) {
+                    return;
+                }
+                change = entry -> entry.withRestock((int) value, now);
+                key = value == 0 ? "economycore.command.shop.restock_off" : "economycore.command.shop.restock_set";
+            }
+            case KIND_LIMIT -> {
+                if (value < 0 || value > MAX_DAILY_LIMIT) {
+                    return;
+                }
+                change = entry -> entry.withDailyLimit((int) value);
+                key = value == 0 ? "economycore.command.shop.limit_off" : "economycore.command.shop.limit_set";
+            }
+            default -> {
+                return;
+            }
+        }
+        Optional<ShopEntry> updated = EconomyData.get(player.server).updateShopEntry(payload.number(), change);
+        if (updated.isEmpty()) {
+            player.displayClientMessage(Component.translatable(
+                    "economycore.command.shop.no_such_entry", payload.number()), true);
+            return;
+        }
+        EconomyEvents.economy().rebuild(player.server);
+        AdminNotices.announce(player, Component.translatable(key,
+                updated.get().stack().getHoverName(), payload.number(), value));
     }
 
     private static void remove(AdminShopActionPayload payload, ServerPlayer player) {

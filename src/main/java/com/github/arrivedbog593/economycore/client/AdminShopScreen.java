@@ -1,5 +1,6 @@
 package com.github.arrivedbog593.economycore.client;
 
+import com.github.arrivedbog593.economycore.platform.ShopEntry;
 import com.github.arrivedbog593.economycore.platform.menu.AdminShopMenu;
 import com.github.arrivedbog593.economycore.platform.network.AdminShopActionPayload;
 import com.github.arrivedbog593.economycore.platform.network.ShopCatalogPayload;
@@ -13,6 +14,7 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
 
@@ -64,6 +66,22 @@ public class AdminShopScreen extends AbstractContainerScreen<AdminShopMenu> {
     /** The remove button, directly under the action button. */
     private static final int REMOVE_Y = ACTION_Y + 18;
 
+    /** On sale or not, beside the remove button, for the chosen entry. */
+    private static final int TOGGLE_X = 8;
+    private static final int TOGGLE_W = ACTION_X - TOGGLE_X - 6;
+
+    /**
+     * The chosen entry's stock, restock and limit a day: three fields under
+     * small labels, and a button that sends whichever of them changed.
+     */
+    private static final int TERMS_LABEL_Y = REMOVE_Y + 19;
+    private static final int TERMS_Y = TERMS_LABEL_Y + 7;
+    private static final int TERM_W = 48;
+    private static final int TERM_GAP = 4;
+    private static final int APPLY_X = 8 + 3 * (TERM_W + TERM_GAP);
+    private static final int APPLY_W = 212 - APPLY_X;
+    private static final float TERM_LABEL_SCALE = 0.75F;
+
     /**
      * How long the remove button stays armed after the first click.
      * <p>
@@ -101,6 +119,14 @@ public class AdminShopScreen extends AbstractContainerScreen<AdminShopMenu> {
 
     private EditBox search;
     private EditBox price;
+    private EditBox stock;
+    private EditBox restock;
+    private EditBox limit;
+
+    /** The chosen entry's stock, restock and limit as they were shown, so apply sends only what changed. */
+    private long shownStock = ShopEntry.UNLIMITED;
+    private long shownRestock;
+    private long shownLimit;
 
     public AdminShopScreen(AdminShopMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
@@ -137,8 +163,165 @@ public class AdminShopScreen extends AbstractContainerScreen<AdminShopMenu> {
         price.setValue(carriedPrice);
         addRenderableWidget(price);
 
+        stock = termField(stock, 0, "∞");
+        restock = termField(restock, 1, "—");
+        limit = termField(limit, 2, "—");
+
         catalog.restore(ScreenPreferences.shopSort(),
                 ScreenPreferences.shopSortDescending());
+    }
+
+    /** One of the three fields of the terms row: digits only, unbordered, framed when drawn. */
+    private EditBox termField(EditBox old, int index, String hint) {
+        String carried = old == null ? "" : old.getValue();
+        EditBox field = new EditBox(font, leftPos + termX(index) + TEXT_INSET, topPos + TERMS_Y + TEXT_Y,
+                TERM_W - TEXT_INSET * 2, 8, Component.literal(hint));
+        field.setBordered(false);
+        field.setHint(Component.literal(hint).withStyle(ChatFormatting.GRAY));
+        field.setMaxLength(9);
+        field.setFilter(text -> text.chars().allMatch(Character::isDigit));
+        field.setValue(carried);
+        field.visible = termsVisible();
+        addRenderableWidget(field);
+        return field;
+    }
+
+    private static int termX(int index) {
+        return 8 + index * (TERM_W + TERM_GAP);
+    }
+
+    /** The entry chosen, as the catalog last sent it, or null. */
+    private ShopCatalogPayload.Entry selectedEntry() {
+        for (ShopCatalogPayload.Entry entry : ClientShopState.entries()) {
+            if (entry.number() == selected) {
+                return entry;
+            }
+        }
+        return null;
+    }
+
+    /** Fills the terms row with the chosen entry's, or empties it. */
+    private void showTerms(ShopCatalogPayload.Entry entry) {
+        shownStock = entry == null ? ShopEntry.UNLIMITED : entry.capacity();
+        shownRestock = entry == null ? 0 : entry.restockHours();
+        shownLimit = entry == null ? 0 : entry.dailyLimit();
+        stock.setValue(shownStock == ShopEntry.UNLIMITED ? "" : String.valueOf(shownStock));
+        restock.setValue(shownRestock == 0 ? "" : String.valueOf(shownRestock));
+        limit.setValue(shownLimit == 0 ? "" : String.valueOf(shownLimit));
+    }
+
+    private boolean termsVisible() {
+        return selected != NO_SELECTION;
+    }
+
+    /** What a terms field says, or {@code empty} when it says nothing. */
+    private static long typed(EditBox field, long empty) {
+        if (field == null || field.getValue().isEmpty()) {
+            return empty;
+        }
+        try {
+            return Long.parseLong(field.getValue());
+        } catch (NumberFormatException tooLong) {
+            return empty;
+        }
+    }
+
+    /** Whether any of the three fields differs from what was shown. */
+    private boolean termsChanged() {
+        return typed(stock, ShopEntry.UNLIMITED) != shownStock
+                || typed(restock, 0) != shownRestock
+                || typed(limit, 0) != shownLimit;
+    }
+
+    /**
+     * Sends whichever of stock, restock and limit changed, and only those.
+     * Setting a stock fills it up, so sending it unchanged alongside a new
+     * limit would have restocked an entry nobody meant to.
+     */
+    private void applyTerms() {
+        if (!termsVisible() || !termsChanged()) {
+            return;
+        }
+        long newStock = typed(stock, ShopEntry.UNLIMITED);
+        long newRestock = typed(restock, 0);
+        long newLimit = typed(limit, 0);
+        if (newStock != shownStock) {
+            PacketDistributor.sendToServer(AdminShopActionPayload.terms(
+                    AdminShopActionPayload.KIND_STOCK, selected, newStock));
+        }
+        if (newRestock != shownRestock) {
+            PacketDistributor.sendToServer(AdminShopActionPayload.terms(
+                    AdminShopActionPayload.KIND_RESTOCK, selected, newRestock));
+        }
+        if (newLimit != shownLimit) {
+            PacketDistributor.sendToServer(AdminShopActionPayload.terms(
+                    AdminShopActionPayload.KIND_LIMIT, selected, newLimit));
+        }
+        playClick();
+    }
+
+    /** Puts the chosen entry on sale or takes it off, at once. */
+    private void toggleSale() {
+        ShopCatalogPayload.Entry entry = selectedEntry();
+        if (entry == null) {
+            return;
+        }
+        PacketDistributor.sendToServer(AdminShopActionPayload.terms(entry.enabled()
+                ? AdminShopActionPayload.KIND_DISABLE : AdminShopActionPayload.KIND_ENABLE, selected, 0));
+        playClick();
+    }
+
+    /** The on-sale button and the terms row, or a line saying to choose an entry first. */
+    private void drawTerms(GuiGraphics graphics, int mouseX, int mouseY) {
+        boolean visible = termsVisible();
+        for (EditBox field : new EditBox[]{stock, restock, limit}) {
+            field.visible = visible;
+        }
+        if (!visible) {
+            Component hint = Component.translatable("economycore.admin.shop.terms_choose");
+            drawSmall(graphics, hint, leftPos + 8, topPos + TERMS_Y + 3, false);
+            return;
+        }
+        ShopCatalogPayload.Entry entry = selectedEntry();
+        boolean onSale = entry == null || entry.enabled();
+        int toggleY = topPos + REMOVE_Y;
+        drawControl(graphics, leftPos + TOGGLE_X, toggleY, TOGGLE_W, Panels.OUTLINE,
+                onSale ? 0xFF2E7D32 : 0xFF6D4C41,
+                isOver(mouseX, mouseY, leftPos + TOGGLE_X, toggleY, TOGGLE_W, SEARCH_H));
+        Component state = Component.translatable(onSale
+                ? "economycore.admin.shop.on_sale" : "economycore.admin.shop.off_sale");
+        graphics.drawString(font, state, leftPos + TOGGLE_X + (TOGGLE_W - font.width(state)) / 2,
+                toggleY + TEXT_Y, 0xFFFFFFFF, false);
+
+        String[] labels = {"economycore.admin.shop.stock", "economycore.admin.shop.restock",
+                "economycore.admin.shop.limit"};
+        EditBox[] fields = {stock, restock, limit};
+        for (int i = 0; i < 3; i++) {
+            int x = leftPos + termX(i);
+            drawSmall(graphics, Component.translatable(labels[i]), x + TERM_W / 2, topPos + TERMS_LABEL_Y, true);
+            boolean typing = fields[i].isFocused();
+            drawControl(graphics, x, topPos + TERMS_Y, TERM_W,
+                    typing ? 0xFFFFFFFF : 0xFFA0A0A0, 0xFF000000, typing);
+            fields[i].render(graphics, mouseX, mouseY, 0f);
+        }
+
+        boolean ready = termsChanged();
+        int applyX = leftPos + APPLY_X;
+        drawControl(graphics, applyX, topPos + TERMS_Y, APPLY_W, Panels.OUTLINE,
+                ready ? 0xFF2E7D32 : 0xFF4A4A4A,
+                ready && isOver(mouseX, mouseY, applyX, topPos + TERMS_Y, APPLY_W, SEARCH_H));
+        Component apply = Component.translatable("economycore.admin.shop.apply");
+        graphics.drawString(font, apply, applyX + (APPLY_W - font.width(apply)) / 2,
+                topPos + TERMS_Y + TEXT_Y, ready ? 0xFFFFFFFF : 0xFF9A9A9A, false);
+    }
+
+    /** Small text for the labels over the terms fields, centred or from the left. */
+    private void drawSmall(GuiGraphics graphics, Component text, int x, int y, boolean centred) {
+        graphics.pose().pushPose();
+        graphics.pose().translate(x, y, 0);
+        graphics.pose().scale(TERM_LABEL_SCALE, TERM_LABEL_SCALE, 1.0F);
+        graphics.drawString(font, text, centred ? -font.width(text) / 2 : 0, 0, Panels.label(), false);
+        graphics.pose().popPose();
     }
 
     @Override
@@ -179,14 +362,23 @@ public class AdminShopScreen extends AbstractContainerScreen<AdminShopMenu> {
     private void renderCatalog(GuiGraphics graphics, int mouseX, int mouseY) {
         List<ShopCatalogPayload.Entry> incoming = ClientShopState.entries();
         if (incoming != lastSeen) {
+            boolean samePlaces = stillInPlace(lastSeen, incoming);
             lastSeen = incoming;
-            // Cheaper to lose a selection than to reprice the wrong item. It
-            // costs this administrator a click when somebody else edits
-            // mid-typing, and it costs nothing at all when the change was their
-            // own, since every action here clears the selection anyway.
-            selected = NO_SELECTION;
-            price.setValue("");
-            confirmUntil = 0;
+            if (samePlaces) {
+                // Only its terms changed — switched on or off, a new stock —
+                // so the numbers still mean what they did: keep the choice and
+                // show the terms as they now are.
+                showTerms(selectedEntry());
+            } else {
+                // Cheaper to lose a selection than to reprice the wrong item.
+                // It costs this administrator a click when somebody else edits
+                // mid-typing, and nothing when the change was their own, since
+                // adding, repricing and removing clear the selection anyway.
+                selected = NO_SELECTION;
+                price.setValue("");
+                showTerms(null);
+                confirmUntil = 0;
+            }
         }
         catalog.accept(incoming);
         List<ShopCatalogPayload.Entry> entries = catalog.entries();
@@ -230,11 +422,16 @@ public class AdminShopScreen extends AbstractContainerScreen<AdminShopMenu> {
                         x + 21, y + 2, 0xFFB0B0B0, false);
                 graphics.drawString(font, compact(entry.price()),
                         x + 21, y + 11, 0xFFFFFFFF, false);
+                if (!entry.onSale()) {
+                    // Dimmed as the customers see it: off, or sold out.
+                    graphics.fill(x, y, x + CELL_WIDTH - 2, y + CELL_HEIGHT - 2, 0x90303030);
+                }
             }
         }
 
         drawControls(graphics, mouseX, mouseY);
         drawActionRow(graphics, mouseX, mouseY);
+        drawTerms(graphics, mouseX, mouseY);
 
         int totalRows = (catalog.size() + COLUMNS - 1) / COLUMNS;
         if (scroll > 0) {
@@ -330,6 +527,24 @@ public class AdminShopScreen extends AbstractContainerScreen<AdminShopMenu> {
                 y + TEXT_Y, 0xFFFFFFFF, false);
     }
 
+    /**
+     * Whether only the terms of entries changed between two catalogs: the same
+     * number of entries, the same item in each place. Then every number still
+     * points where it did, and a choice can stay made.
+     */
+    private static boolean stillInPlace(List<ShopCatalogPayload.Entry> before, List<ShopCatalogPayload.Entry> after) {
+        if (before.size() != after.size()) {
+            return false;
+        }
+        for (int i = 0; i < before.size(); i++) {
+            if (before.get(i).number() != after.get(i).number()
+                    || !ItemStack.isSameItemSameComponents(before.get(i).stack(), after.get(i).stack())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     /** Whether the remove button is waiting for its second click. */
     private boolean isArmed() {
         return System.currentTimeMillis() < confirmUntil;
@@ -398,6 +613,27 @@ public class AdminShopScreen extends AbstractContainerScreen<AdminShopMenu> {
             return;
         }
 
+        if (termsVisible()) {
+            String hint = null;
+            if (isOver(mouseX, mouseY, leftPos + TOGGLE_X, topPos + REMOVE_Y, TOGGLE_W, SEARCH_H)) {
+                hint = "economycore.admin.shop.toggle_hint";
+            } else if (isOver(mouseX, mouseY, leftPos + termX(0), topPos + TERMS_Y, TERM_W, SEARCH_H)) {
+                hint = "economycore.admin.shop.stock_hint";
+            } else if (isOver(mouseX, mouseY, leftPos + termX(1), topPos + TERMS_Y, TERM_W, SEARCH_H)) {
+                hint = "economycore.admin.shop.restock_hint";
+            } else if (isOver(mouseX, mouseY, leftPos + termX(2), topPos + TERMS_Y, TERM_W, SEARCH_H)) {
+                hint = "economycore.admin.shop.limit_hint";
+            } else if (isOver(mouseX, mouseY, leftPos + APPLY_X, topPos + TERMS_Y, APPLY_W, SEARCH_H)) {
+                hint = "economycore.admin.shop.apply_hint";
+            }
+            if (hint != null) {
+                // Wrapped: these say more than a line's worth.
+                graphics.renderTooltip(font, font.split(
+                        Component.translatable(hint).withStyle(ChatFormatting.GRAY), 180), mouseX, mouseY);
+                return;
+            }
+        }
+
         List<ShopCatalogPayload.Entry> entries = catalog.entries();
         int first = scroll * COLUMNS;
         for (int cell = 0; cell < COLUMNS * ROWS; cell++) {
@@ -415,6 +651,13 @@ public class AdminShopScreen extends AbstractContainerScreen<AdminShopMenu> {
                     getTooltipFromItem(Minecraft.getInstance(), entry.stack()));
             lines.add(Component.translatable("economycore.admin.shop.entry_number",
                     entry.number(), format(entry.price())).withStyle(ChatFormatting.GRAY));
+            lines.add(Component.translatable(entry.enabled()
+                            ? "economycore.command.shop.info_on" : "economycore.command.shop.info_off")
+                    .withStyle(entry.enabled() ? ChatFormatting.GREEN : ChatFormatting.RED));
+            if (entry.stock() != ShopEntry.UNLIMITED) {
+                lines.add(Component.translatable("economycore.admin.shop.stock_of",
+                        format(entry.stock()), format(entry.capacity())).withStyle(ChatFormatting.GRAY));
+            }
             lines.add(Component.translatable("economycore.admin.shop.entry_hint")
                     .withStyle(ChatFormatting.DARK_GRAY));
             graphics.renderComponentTooltip(font, lines, mouseX, mouseY);
@@ -424,7 +667,7 @@ public class AdminShopScreen extends AbstractContainerScreen<AdminShopMenu> {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        for (EditBox field : new EditBox[]{search, price}) {
+        for (EditBox field : new EditBox[]{search, price, stock, restock, limit}) {
             if (field != null && field.isFocused()) {
                 if (keyCode == InputConstants.KEY_ESCAPE) {
                     field.setFocused(false);
@@ -466,6 +709,21 @@ public class AdminShopScreen extends AbstractContainerScreen<AdminShopMenu> {
             ScreenPreferences.setRememberSearch(!ScreenPreferences.rememberSearch());
             playClick();
             return true;
+        }
+        if (termsVisible()) {
+            if (isOver(mx, my, leftPos + TOGGLE_X, topPos + REMOVE_Y, TOGGLE_W, SEARCH_H)) {
+                toggleSale();
+                return true;
+            }
+            if (focusField(stock, leftPos + termX(0), topPos + TERMS_Y, TERM_W, mx, my, button)
+                    || focusField(restock, leftPos + termX(1), topPos + TERMS_Y, TERM_W, mx, my, button)
+                    || focusField(limit, leftPos + termX(2), topPos + TERMS_Y, TERM_W, mx, my, button)) {
+                return true;
+            }
+            if (isOver(mx, my, leftPos + APPLY_X, topPos + TERMS_Y, APPLY_W, SEARCH_H)) {
+                applyTerms();
+                return true;
+            }
         }
         if (isOver(mx, my, leftPos + ACTION_X, topPos + ACTION_Y, ACTION_W, SEARCH_H)) {
             act();
@@ -514,6 +772,7 @@ public class AdminShopScreen extends AbstractContainerScreen<AdminShopMenu> {
             ShopCatalogPayload.Entry entry = entries.get(index);
             selected = entry.number() == selected ? NO_SELECTION : entry.number();
             price.setValue(selected == NO_SELECTION ? "" : String.valueOf(entry.price()));
+            showTerms(selected == NO_SELECTION ? null : entry);
             // Changing the subject disarms the button. Otherwise, a click
             // meant for one entry could land, armed, on the next.
             confirmUntil = 0;
@@ -542,6 +801,7 @@ public class AdminShopScreen extends AbstractContainerScreen<AdminShopMenu> {
         PacketDistributor.sendToServer(AdminShopActionPayload.remove(selected));
         selected = NO_SELECTION;
         price.setValue("");
+        showTerms(null);
         confirmUntil = 0;
         playClick();
     }
@@ -555,6 +815,7 @@ public class AdminShopScreen extends AbstractContainerScreen<AdminShopMenu> {
                 : AdminShopActionPayload.reprice(selected, typedPrice()));
         selected = NO_SELECTION;
         price.setValue("");
+        showTerms(null);
         playClick();
     }
 

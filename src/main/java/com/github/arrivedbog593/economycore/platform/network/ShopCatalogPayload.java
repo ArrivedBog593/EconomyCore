@@ -52,9 +52,12 @@ public record ShopCatalogPayload(List<Entry> entries) implements CustomPacketPay
      * @param stock       purchases left, or {@link ShopEntry#UNLIMITED}
      * @param limitLeft   purchases this player has left today, or -1 for no limit
      * @param restockIn   milliseconds until it fills back up, or -1 if it never does
+     * @param capacity     what a restock fills up to, or {@link ShopEntry#UNLIMITED}; for the staff's window
+     * @param restockHours how many hours apart it fills up, zero for never; for the staff's window
+     * @param dailyLimit   purchases each player may make a day, zero for none; for the staff's window
      */
     public record Entry(int number, ItemStack stack, long price, boolean enabled, long stock,
-                        int limitLeft, long restockIn) {
+                        int limitLeft, long restockIn, long capacity, int restockHours, int dailyLimit) {
 
         public static final StreamCodec<RegistryFriendlyByteBuf, Entry> STREAM_CODEC =
                 StreamCodec.of((buffer, entry) -> {
@@ -65,9 +68,12 @@ public record ShopCatalogPayload(List<Entry> entries) implements CustomPacketPay
                     buffer.writeLong(entry.stock());
                     buffer.writeInt(entry.limitLeft());
                     buffer.writeLong(entry.restockIn());
+                    buffer.writeLong(entry.capacity());
+                    buffer.writeVarInt(entry.restockHours());
+                    buffer.writeVarInt(entry.dailyLimit());
                 }, buffer -> new Entry(buffer.readVarInt(), ItemStack.STREAM_CODEC.decode(buffer),
                         buffer.readVarLong(), buffer.readBoolean(), buffer.readLong(), buffer.readInt(),
-                        buffer.readLong()));
+                        buffer.readLong(), buffer.readLong(), buffer.readVarInt(), buffer.readVarInt()));
 
         /** Whether it can be put in a cart: switched on, and not sold out. */
         public boolean onSale() {
@@ -111,7 +117,7 @@ public record ShopCatalogPayload(List<Entry> entries) implements CustomPacketPay
                     : Math.max(0, entry.dailyLimit() - data.boughtToday(entry.id(), player.getUUID(), now));
             long restockIn = entry.nextRestock() <= 0 ? -1 : Math.max(0, entry.nextRestock() - now);
             entries.add(new Entry(i + 1, entry.prototype(), entry.price(), entry.enabled(), entry.stock(),
-                    limitLeft, restockIn));
+                    limitLeft, restockIn, entry.capacity(), entry.restockHours(), entry.dailyLimit()));
         }
         // Sent in catalog order. How a player wants it sorted is their own
         // business and the screen handles it locally, so the packet stays the
