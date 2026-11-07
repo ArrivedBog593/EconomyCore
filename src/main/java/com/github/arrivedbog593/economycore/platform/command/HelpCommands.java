@@ -60,9 +60,10 @@ public final class HelpCommands {
                     source -> CounterCommands.mayOpen(source, Counter.BANK)),
             new Entry("/credits withdraw <amount|all>", "economycore.help.credits_withdraw",
                     source -> CounterCommands.mayOpen(source, Counter.BANK)),
-            new Entry("/credits give <player> <amount>", "economycore.help.credits_give", BANK),
-            new Entry("/credits take <player> <amount>", "economycore.help.credits_take", BANK),
-            new Entry("/credits set <player> <amount>", "economycore.help.credits_set", BANK),
+            new Entry("/credits give <player> <amount> [bank]", "economycore.help.credits_give", BANK),
+            new Entry("/credits take <player> <amount> [bank]", "economycore.help.credits_take", BANK),
+            new Entry("/credits set <player> <amount> [bank]", "economycore.help.credits_set", BANK),
+            new Entry("/credits banklevel <player> [level]", "economycore.help.credits_banklevel", BANK),
 
             new Entry("/economycore values list [page]", "economycore.help.values_list", OPERATORS),
             new Entry("/economycore values set <credits>", "economycore.help.values_set", OPERATORS),
@@ -72,6 +73,10 @@ public final class HelpCommands {
             new Entry("/economycore spread [percent]", "economycore.help.spread", OPERATORS),
             new Entry("/economycore deathloss [percent]", "economycore.help.deathloss", OPERATORS),
             new Entry("/economycore deathloss combat <true|false>", "economycore.help.deathloss_combat", OPERATORS),
+            new Entry("/economycore interest pay", "economycore.help.interest_pay", OPERATORS),
+            new Entry("/economycore banksettings useconfig", "economycore.help.banksettings_useconfig", OPERATORS),
+            new Entry("/economycore pass give <players> [seconds]", "economycore.help.pass_give", OPERATORS),
+            new Entry("/economycore pass clear <players>", "economycore.help.pass_clear", OPERATORS),
 
             new Entry("/economycore bank", "economycore.help.bank", BANK),
             new Entry("/economycore bank add <amount>", "economycore.help.bank_add", BANK),
@@ -86,6 +91,7 @@ public final class HelpCommands {
             new Entry("/economycore shop enable|disable <entry>", "economycore.help.shop_enable", OPERATORS),
             new Entry("/economycore shop stock <entry> <amount|unlimited>", "economycore.help.shop_stock", OPERATORS),
             new Entry("/economycore shop restock <entry> <hours>", "economycore.help.shop_restock", OPERATORS),
+            new Entry("/economycore shop restock <entry> now", "economycore.help.shop_restock_now", OPERATORS),
             new Entry("/economycore shop limit <entry> <perDay>", "economycore.help.shop_limit", OPERATORS),
             new Entry("/economycore shop info <entry>", "economycore.help.shop_info", OPERATORS),
 

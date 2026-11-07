@@ -3,12 +3,16 @@ package com.github.arrivedbog593.economycore.client;
 import com.github.arrivedbog593.economycore.EconomyCore;
 import com.github.arrivedbog593.economycore.api.CreditFormat;
 import com.github.arrivedbog593.economycore.api.CreditMath;
+import com.github.arrivedbog593.economycore.engine.BankLevels;
 import com.github.arrivedbog593.economycore.engine.BankMovement;
 import com.github.arrivedbog593.economycore.engine.CreditAccount;
 import com.github.arrivedbog593.economycore.engine.InterestTranches;
+import com.github.arrivedbog593.economycore.platform.PassWatch;
+import com.github.arrivedbog593.economycore.platform.SavingsLevels;
 import com.github.arrivedbog593.economycore.platform.menu.BankMenu;
 import com.github.arrivedbog593.economycore.platform.network.BankActionPayload;
 import com.github.arrivedbog593.economycore.platform.network.BankStatePayload;
+import com.github.arrivedbog593.economycore.platform.network.BankUpgradePayload;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
@@ -17,14 +21,15 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
 
-import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
@@ -55,7 +60,7 @@ import java.util.Locale;
 public class BankScreen extends AbstractContainerScreen<BankMenu> {
 
     private enum Tab {
-        DEPOSIT("deposit"), WITHDRAW("withdraw"), RECENT("recent"), INFO("info");
+        DEPOSIT("deposit"), WITHDRAW("withdraw"), RECENT("recent"), UPGRADE("upgrade"), INFO("info");
 
         final String key;
         final ResourceLocation icon;
@@ -105,6 +110,13 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
     private static final int FOOTER_Y = ROW_Y + ROW_H + 15;
     private static final int LINE = 10;
 
+    // The Upgrades page: the level now, the next, its cost in a well, and the button at the foot.
+    private static final int UPGRADE_NEXT_Y = BODY_Y + 2 * LINE + 4;
+    private static final int UPGRADE_COST_Y = UPGRADE_NEXT_Y + 3 * LINE + 2;
+    private static final int COST_H = 18;
+    private static final int UPGRADE_W = 80;
+    private static final int UPGRADE_BUTTON_Y = CONTENT_B - ROW_H;
+
     // The shop's and the exchange's buttons, so the three counters match.
     private static final int CONTROL_FACE = 0xFF555555;
     private static final int DEPOSIT_FACE = 0xFF2E7D32;
@@ -114,6 +126,8 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
     private static final int ON_DISABLED = 0xFF9A9A9A;
     private static final int IN_WELL = 0xFFE8E8E8;
     private static final int SUM = 0xFFFFD54F;
+    /** What the player is short of, as the shop marks a price they cannot pay. */
+    private static final int SHORT = 0xFFFF6B6B;
 
     private static final List<Share> DEPOSIT_SHARES = List.of(
             new Share("share.all", 100), new Share("share.half", 50));
@@ -124,6 +138,15 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
     private static Tab remembered = Tab.DEPOSIT;
 
     private Tab tab = remembered;
+
+    /**
+     * How many lines the information page is scrolled down. A bank with many
+     * tranches, as a Palatial account has, says more than the page holds.
+     */
+    private int infoScroll;
+
+    /** How many lines the information page had last drawn, to keep the scroll in range. */
+    private int infoLines;
     private EditBox amount;
 
     public BankScreen(BankMenu menu, Inventory inventory, Component title) {
@@ -152,6 +175,7 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
     private void select(Tab next) {
         tab = next;
         remembered = next;
+        infoScroll = 0;
         amount.setValue("");
         amount.setFocused(false);
         showAmountField();
@@ -254,7 +278,11 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
             case DEPOSIT -> renderMove(graphics, mouseX, mouseY, true);
             case WITHDRAW -> renderMove(graphics, mouseX, mouseY, false);
             case RECENT -> renderRecent(graphics);
+            case UPGRADE -> renderUpgrade(graphics, mouseX, mouseY);
             case INFO -> renderInfo(graphics);
+        }
+        if (tab == Tab.UPGRADE && renderCostTooltip(graphics, mouseX, mouseY)) {
+            return;
         }
         renderTabTooltip(graphics, mouseX, mouseY);
     }
@@ -266,7 +294,7 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
 
     /** Deposit or withdraw: a button per share with what it comes to, then a typed amount. */
     private void renderMove(GuiGraphics graphics, int mouseX, int mouseY, boolean deposit) {
-        long of = deposit ? menu.free() : menu.savings();
+        long of = deposit ? depositable() : menu.savings();
         drawPageTitle(graphics, text(deposit ? "tile.deposit" : "tile.withdraw"));
 
         List<Share> shares = deposit ? DEPOSIT_SHARES : WITHDRAW_SHARES;
@@ -316,10 +344,13 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
             footer.add(text("promised", CreditFormat.of(promised)));
         }
         BankStatePayload state = ClientBankState.state();
+        if (deposit && state != null && state.level() != null) {
+            footer.add(text("deposit_room", CreditFormat.of(room()), CreditFormat.of(state.level().cap())));
+        }
         if (deposit && state != null && !state.tranches().isEmpty()) {
             InterestTranches.Tranche first = state.tranches().getFirst();
-            footer.add(text("deposit_interest", percent(first.basisPoints()), CreditFormat.of(first.upTo())));
-            footer.add(text("interest_in", duration(ClientBankState.millisUntilInterest())));
+            footer.add(text("deposit_interest", InterestTranches.percent(first.rate()), CreditFormat.of(first.upTo())));
+            footer.add(text("interest_in", PassWatch.describe(ClientBankState.millisUntilInterest())));
         }
         drawLines(graphics, footer, FOOTER_Y);
     }
@@ -338,7 +369,8 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
         // Newest first, the way a statement is read.
         for (int i = recent.size() - 1; i >= 0 && y + 8 <= topPos + CONTENT_B; i--) {
             BankMovement movement = recent.get(i);
-            boolean out = movement.kind() == BankMovement.Kind.WITHDRAWAL;
+            boolean out = movement.kind() == BankMovement.Kind.WITHDRAWAL
+                    || movement.kind() == BankMovement.Kind.UPGRADE;
             String figure = (out ? "- " : "+ ") + CreditFormat.of(movement.amount());
             graphics.drawString(font, figure, leftPos + CONTENT_X, y, out ? Panels.negative() : Panels.positive(),
                     false);
@@ -362,6 +394,10 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
         lines.add(text("info.safe"));
         BankStatePayload state = ClientBankState.state();
         if (state != null) {
+            if (state.level() != null) {
+                lines.add(text("info.level", SavingsLevels.nameOf(state.level().name()),
+                        CreditFormat.of(state.level().cap())));
+            }
             lines.add(state.deathLossPercent() > 0
                     ? text(state.combatOnly() ? "info.death_combat" : "info.death", state.deathLossPercent())
                     : text("info.no_death"));
@@ -369,24 +405,204 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
                 lines.add(text("info.interest_off"));
             } else {
                 lines.add(text("info.interest_every", duration(state.interestPeriod())));
-                lines.add(text("interest_in", duration(ClientBankState.millisUntilInterest())));
+                lines.add(text("interest_in", PassWatch.describe(ClientBankState.millisUntilInterest())));
                 long from = 0;
                 for (InterestTranches.Tranche tranche : state.tranches()) {
                     lines.add(from == 0
-                            ? text("info.tranche_first", CreditFormat.of(tranche.upTo()), percent(tranche.basisPoints()))
+                            ? text("info.tranche_first", CreditFormat.of(tranche.upTo()), InterestTranches.percent(tranche.rate()))
                             : text("info.tranche_next", CreditFormat.of(from), CreditFormat.of(tranche.upTo()),
-                            percent(tranche.basisPoints())));
+                            InterestTranches.percent(tranche.rate())));
                     from = tranche.upTo();
                 }
                 lines.add(text("info.max_interest",
                         CreditFormat.of(new InterestTranches(state.tranches()).maxInterest()), CreditFormat.of(from)));
             }
         }
-        drawLines(graphics, lines, BODY_Y);
+        drawScrolled(graphics, lines);
+    }
+
+    /**
+     * One line of the page, shrunk to the page's width when it is wider, as
+     * a cap of a hundred billion and more is.
+     */
+    private void drawFitted(GuiGraphics graphics, Component line, int y) {
+        int width = font.width(line);
+        if (width <= CONTENT_W) {
+            graphics.drawString(font, line, leftPos + CONTENT_X, topPos + y, Panels.label(), false);
+            return;
+        }
+        float scale = (float) CONTENT_W / width;
+        graphics.pose().pushPose();
+        graphics.pose().translate(leftPos + CONTENT_X, topPos + y + (font.lineHeight * (1 - scale)) / 2, 0);
+        graphics.pose().scale(scale, scale, 1);
+        graphics.drawString(font, line, 0, 0, Panels.label(), false);
+        graphics.pose().popPose();
+    }
+
+    /**
+     * The account's level and the next: what it holds, what it pays, and
+     * what reaching it costs, with the cost in red where the player is short.
+     * The server checks again when the button is pressed.
+     */
+    private void renderUpgrade(GuiGraphics graphics, int mouseX, int mouseY) {
+        drawPageTitle(graphics, text("tile.upgrade"));
+        BankStatePayload state = ClientBankState.state();
+        BankStatePayload.Level level = state == null ? null : state.level();
+        if (level == null) {
+            drawLines(graphics, List.of(text("upgrade.no_levels")), BODY_Y);
+            return;
+        }
+        int x = leftPos + CONTENT_X;
+        drawFitted(graphics, text("upgrade.current", SavingsLevels.nameOf(level.name()),
+                level.place() + 1, level.count()), BODY_Y);
+        drawFitted(graphics, text("upgrade.holds", CreditFormat.of(level.cap())), BODY_Y + LINE);
+        BankStatePayload.Next next = level.next();
+        if (next == null) {
+            drawLines(graphics, List.of(text("upgrade.top")), UPGRADE_NEXT_Y);
+            return;
+        }
+        drawFitted(graphics, text("upgrade.next", SavingsLevels.nameOf(next.name())), UPGRADE_NEXT_Y);
+        drawFitted(graphics, text("upgrade.holds", CreditFormat.of(next.cap())), UPGRADE_NEXT_Y + LINE);
+        if (next.maxInterest() >= 0) {
+            drawFitted(graphics, text("upgrade.max_interest", CreditFormat.of(next.maxInterest())),
+                    UPGRADE_NEXT_Y + 2 * LINE);
+        }
+
+        graphics.drawString(font, text("upgrade.cost"), x, topPos + UPGRADE_COST_Y, Panels.label(), false);
+        int costY = topPos + UPGRADE_COST_Y + LINE;
+        Panels.recess(graphics, x, costY, CONTENT_W, COST_H);
+        int at = x + 4;
+        if (next.credits() <= 0 && next.items().isEmpty()) {
+            graphics.drawString(font, text("upgrade.free"), at, costY + 5, IN_WELL, true);
+        }
+        if (next.credits() > 0) {
+            graphics.blit(COIN, at, costY + 4, 0, 0, 9, 9, 9, 9);
+            String figure = CreditFormat.of(next.credits());
+            graphics.drawString(font, figure, at + 12, costY + 5,
+                    menu.savings() >= next.credits() ? SUM : SHORT, true);
+            at += 12 + font.width(figure) + 8;
+        }
+        for (BankLevels.ItemCost cost : next.items()) {
+            ItemStack stack = SavingsLevels.item(cost).map(ItemStack::new).orElse(ItemStack.EMPTY);
+            graphics.renderItem(stack, at, costY + 1);
+            String count = "×" + cost.count();
+            graphics.drawString(font, count, at + 17, costY + 5, carried(cost) >= cost.count() ? ON_FACE : SHORT,
+                    true);
+            at += 17 + font.width(count) + 6;
+        }
+
+        boolean enabled = canUpgrade(next);
+        int buttonX = leftPos + CONTENT_R - UPGRADE_W;
+        int buttonY = topPos + UPGRADE_BUTTON_Y;
+        control(graphics, buttonX, buttonY, UPGRADE_W, ROW_H, enabled ? DEPOSIT_FACE : DISABLED_FACE,
+                enabled && isOver(mouseX, mouseY, buttonX, buttonY, UPGRADE_W, ROW_H));
+        centered(graphics, text("upgrade.button"), buttonX + UPGRADE_W / 2, buttonY + TEXT_Y, UPGRADE_W - 4,
+                enabled ? ON_FACE : ON_DISABLED);
+    }
+
+    /** An item's name and how many of it the player has, over its icon in the cost. */
+    private boolean renderCostTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
+        BankStatePayload state = ClientBankState.state();
+        BankStatePayload.Next next = state == null || state.level() == null ? null : state.level().next();
+        if (next == null) {
+            return false;
+        }
+        int at = leftPos + CONTENT_X + 4;
+        int costY = topPos + UPGRADE_COST_Y + LINE;
+        if (next.credits() > 0) {
+            at += 12 + font.width(CreditFormat.of(next.credits())) + 8;
+        }
+        for (BankLevels.ItemCost cost : next.items()) {
+            if (isOver(mouseX, mouseY, at, costY + 1, 16, 16)) {
+                Component name = SavingsLevels.item(cost).map(item -> item.getDescription())
+                        .orElse(Component.literal(cost.item()));
+                graphics.renderComponentTooltip(font, List.of(name,
+                        text("upgrade.have", carried(cost), cost.count()).withStyle(ChatFormatting.GRAY)),
+                        mouseX, mouseY);
+                return true;
+            }
+            at += 17 + font.width("×" + cost.count()) + 6;
+        }
+        return false;
+    }
+
+    /** How many of a cost's item the player carries. */
+    private int carried(BankLevels.ItemCost cost) {
+        if (minecraft == null || minecraft.player == null) {
+            return 0;
+        }
+        return SavingsLevels.item(cost).map(item -> SavingsLevels.countOf(minecraft.player.getInventory(), item))
+                .orElse(0);
+    }
+
+    private boolean canUpgrade(BankStatePayload.Next next) {
+        if (menu.savings() < next.credits()) {
+            return false;
+        }
+        for (BankLevels.ItemCost cost : next.items()) {
+            if (carried(cost) < cost.count()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** What may go into the bank now: the free purse, but no more than the account's level has room for. */
+    private long depositable() {
+        return Math.min(menu.free(), room());
+    }
+
+    /** How much more the account holds, as the menu's balance and the level's cap say. */
+    private long room() {
+        BankStatePayload state = ClientBankState.state();
+        if (state == null || state.level() == null) {
+            return CreditAccount.MAX_BALANCE;
+        }
+        return Math.max(0, state.level().cap() - menu.savings());
     }
 
     private void drawPageTitle(GuiGraphics graphics, Component title) {
         graphics.drawString(font, title, leftPos + CONTENT_X, topPos + PAGE_Y, Panels.label(), false);
+    }
+
+    /**
+     * The information page, wrapped and scrolled with the wheel, with an
+     * arrow at the top or the foot while there is more that way, as the
+     * shop marks its grid. Leaves room on the right for the arrows.
+     */
+    private void drawScrolled(GuiGraphics graphics, List<Component> lines) {
+        List<FormattedCharSequence> wrapped = new ArrayList<>();
+        for (Component line : lines) {
+            wrapped.addAll(font.split(line, CONTENT_W - 8));
+        }
+        infoLines = wrapped.size();
+        int rows = infoRows();
+        infoScroll = Math.clamp(infoScroll, 0, Math.max(0, wrapped.size() - rows));
+        int y = topPos + BODY_Y;
+        for (int i = infoScroll; i < wrapped.size() && i < infoScroll + rows; i++) {
+            graphics.drawString(font, wrapped.get(i), leftPos + CONTENT_X, y, Panels.label(), false);
+            y += LINE;
+        }
+        int arrowX = leftPos + CONTENT_R - font.width("▲");
+        if (infoScroll > 0) {
+            graphics.drawString(font, "▲", arrowX, topPos + BODY_Y, Panels.label(), false);
+        }
+        if (infoScroll + rows < wrapped.size()) {
+            graphics.drawString(font, "▼", arrowX, topPos + BODY_Y + (rows - 1) * LINE, Panels.label(), false);
+        }
+    }
+
+    private static int infoRows() {
+        return (CONTENT_B - BODY_Y) / LINE;
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double deltaX, double deltaY) {
+        if (tab == Tab.INFO && infoLines > infoRows()) {
+            infoScroll = Math.clamp(infoScroll - (int) Math.signum(deltaY), 0, infoLines - infoRows());
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, deltaX, deltaY);
     }
 
     /** Lines wrapped to the page, from {@code fromY} down, stopping at its foot. */
@@ -459,9 +675,21 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
                 return true;
             }
         }
+        if (tab == Tab.UPGRADE) {
+            BankStatePayload state = ClientBankState.state();
+            BankStatePayload.Next next = state == null || state.level() == null ? null : state.level().next();
+            if (next != null && isOver(x, y, leftPos + CONTENT_R - UPGRADE_W, topPos + UPGRADE_BUTTON_Y,
+                    UPGRADE_W, ROW_H)) {
+                if (canUpgrade(next)) {
+                    playClick();
+                    send(BankUpgradePayload.INSTANCE);
+                }
+                return true;
+            }
+        }
         if (tab == Tab.DEPOSIT || tab == Tab.WITHDRAW) {
             boolean deposit = tab == Tab.DEPOSIT;
-            long of = deposit ? menu.free() : menu.savings();
+            long of = deposit ? depositable() : menu.savings();
             List<Share> shares = deposit ? DEPOSIT_SHARES : WITHDRAW_SHARES;
             int cardW = cardWidth(shares);
             for (int i = 0; i < shares.size(); i++) {
@@ -491,7 +719,7 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
     private void confirm() {
         long typed = typed();
         boolean deposit = tab == Tab.DEPOSIT;
-        if (typed <= 0 || typed > (deposit ? menu.free() : menu.savings())) {
+        if (typed <= 0 || typed > (deposit ? depositable() : menu.savings())) {
             return;
         }
         playClick();
@@ -519,7 +747,7 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
-    private void send(BankActionPayload payload) {
+    private void send(CustomPacketPayload payload) {
         PacketDistributor.sendToServer(payload);
     }
 
@@ -541,10 +769,6 @@ public class BankScreen extends AbstractContainerScreen<BankMenu> {
         return Component.translatable("economycore.my_bank." + key, args);
     }
 
-    /** A rate in basis points as a percentage: 200 is "2", 125 is "1.25". */
-    private static String percent(long basisPoints) {
-        return BigDecimal.valueOf(basisPoints).movePointLeft(2).stripTrailingZeros().toPlainString();
-    }
 
     /** How long ago, short enough for a statement line: now, 5 min, 7 h, 2 days. */
     private static Component ago(long millis) {

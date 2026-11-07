@@ -90,6 +90,13 @@ public final class TransactionType {
      */
     public static final TransactionType SAVINGS_INTEREST = register("savings_interest", false);
 
+    /**
+     * What moving a bank account up a level cost, out of the bank. Not
+     * recoverable: the items it also cost come back with the world after a
+     * crash, and so does the level, which is saved with the balances.
+     */
+    public static final TransactionType BANK_UPGRADE = register("bank_upgrade", false);
+
     private final String code;
     private final boolean recoverable;
 

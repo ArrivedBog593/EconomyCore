@@ -8,12 +8,14 @@ import net.minecraft.core.UUIDUtil;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.saveddata.SavedData;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
@@ -69,6 +71,9 @@ public final class EconomyData extends SavedData {
     private static final String KEY_DEATH_LOSS_PERCENT = "death_loss_percent";
     private static final String KEY_DEATH_LOSS_COMBAT_ONLY = "death_loss_combat_only";
     private static final String KEY_NEXT_INTEREST = "next_interest_at";
+    private static final String KEY_INTEREST_ON = "interest_on";
+    private static final String KEY_INTEREST_HOURS = "interest_period_hours";
+    private static final String KEY_BANK_LEVELS = "bank_levels";
     private static final String KEY_PASSES = "merchant_passes";
     private static final String KEY_PASS_PLAYER = "player";
     private static final String KEY_PASS_UNTIL = "until";
@@ -122,6 +127,18 @@ public final class EconomyData extends SavedData {
     /** When interest is next paid, in milliseconds since the epoch; zero until it is first scheduled. */
     private long nextInterestAt;
 
+    /*
+     * The bank's settings as changed from inside this world, each null (or
+     * zero) until changed: until then the world follows the server config,
+     * which so serves as the defaults every new world starts from. Kept here
+     * rather than written to the config, which every single-player world
+     * shares, so that taking every level out of one world leaves the next
+     * world its own.
+     */
+    private @Nullable Boolean interestOn;
+    private int interestPeriodHours;
+    private @Nullable List<String> bankLevels;
+
     /**
      * Who may configure the casino without being an operator, and how far.
      * <p>
@@ -162,6 +179,18 @@ public final class EconomyData extends SavedData {
         data.deathLossPercent = Math.clamp(tag.getInt(KEY_DEATH_LOSS_PERCENT), 0, DeathLoss.MAX_PERCENT);
         data.deathLossCombatOnly = tag.getBoolean(KEY_DEATH_LOSS_COMBAT_ONLY);
         data.nextInterestAt = Math.max(0, tag.getLong(KEY_NEXT_INTEREST));
+        if (tag.contains(KEY_INTEREST_ON)) {
+            data.interestOn = tag.getBoolean(KEY_INTEREST_ON);
+        }
+        data.interestPeriodHours = Math.max(0, tag.getInt(KEY_INTEREST_HOURS));
+        if (tag.contains(KEY_BANK_LEVELS)) {
+            ListTag levels = tag.getList(KEY_BANK_LEVELS, Tag.TAG_STRING);
+            List<String> lines = new ArrayList<>();
+            for (int i = 0; i < levels.size(); i++) {
+                lines.add(levels.getString(i));
+            }
+            data.bankLevels = List.copyOf(lines);
+        }
         ListTag passList = tag.getList(KEY_PASSES, Tag.TAG_COMPOUND);
         for (int i = 0; i < passList.size(); i++) {
             CompoundTag pass = passList.getCompound(i);
@@ -197,6 +226,17 @@ public final class EconomyData extends SavedData {
         tag.putInt(KEY_DEATH_LOSS_PERCENT, deathLossPercent);
         tag.putBoolean(KEY_DEATH_LOSS_COMBAT_ONLY, deathLossCombatOnly);
         tag.putLong(KEY_NEXT_INTEREST, nextInterestAt);
+        if (interestOn != null) {
+            tag.putBoolean(KEY_INTEREST_ON, interestOn);
+        }
+        if (interestPeriodHours > 0) {
+            tag.putInt(KEY_INTEREST_HOURS, interestPeriodHours);
+        }
+        if (bankLevels != null) {
+            ListTag levels = new ListTag();
+            bankLevels.forEach(line -> levels.add(StringTag.valueOf(line)));
+            tag.put(KEY_BANK_LEVELS, levels);
+        }
         ListTag passList = new ListTag();
         long now = System.currentTimeMillis();
         passes.forEach((player, until) -> {
@@ -335,6 +375,46 @@ public final class EconomyData extends SavedData {
 
     public void setNextInterestAt(long time) {
         this.nextInterestAt = time;
+        setDirty();
+    }
+
+    // --- This world's own bank settings -------------------------------------
+
+    /** Whether this world pays interest, or null to follow the server config. */
+    public @Nullable Boolean interestOn() {
+        return interestOn;
+    }
+
+    public void setInterestOn(boolean on) {
+        this.interestOn = on;
+        setDirty();
+    }
+
+    /** How many hours apart this world pays interest, or zero to follow the server config. */
+    public int interestPeriodHours() {
+        return interestPeriodHours;
+    }
+
+    public void setInterestPeriodHours(int hours) {
+        this.interestPeriodHours = Math.max(0, hours);
+        setDirty();
+    }
+
+    /** This world's bank levels, one to a line, or null to follow the server config. */
+    public @Nullable List<String> bankLevels() {
+        return bankLevels;
+    }
+
+    public void setBankLevels(List<String> lines) {
+        this.bankLevels = List.copyOf(lines);
+        setDirty();
+    }
+
+    /** Forgets this world's own bank settings, so it follows the server config again. */
+    public void forgetBankSettings() {
+        interestOn = null;
+        interestPeriodHours = 0;
+        bankLevels = null;
         setDirty();
     }
 
@@ -523,6 +603,15 @@ public final class EconomyData extends SavedData {
         passes.put(player, until);
         setDirty();
         return until;
+    }
+
+    /** Ends a player's pass now; whether they had one running. */
+    public boolean clearPass(UUID player, long now) {
+        boolean running = passUntil(player) > now;
+        if (passes.remove(player) != null) {
+            setDirty();
+        }
+        return running;
     }
 
     public boolean passListed() {

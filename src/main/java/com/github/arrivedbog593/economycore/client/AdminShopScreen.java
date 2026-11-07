@@ -13,6 +13,7 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -278,8 +279,16 @@ public class AdminShopScreen extends AbstractContainerScreen<AdminShopMenu> {
             field.visible = visible;
         }
         if (!visible) {
+            // Wrapped to the panel, which it ran out of in Spanish.
             Component hint = Component.translatable("economycore.admin.shop.terms_choose");
-            drawSmall(graphics, hint, leftPos + 8, topPos + TERMS_Y + 3, false);
+            List<FormattedCharSequence> lines = font.split(hint, (int) ((imageWidth - 16) / TERM_LABEL_SCALE));
+            for (int i = 0; i < lines.size(); i++) {
+                graphics.pose().pushPose();
+                graphics.pose().translate(leftPos + 8, topPos + TERMS_Y + i * 7, 0);
+                graphics.pose().scale(TERM_LABEL_SCALE, TERM_LABEL_SCALE, 1.0F);
+                graphics.drawString(font, lines.get(i), 0, 0, Panels.label(), false);
+                graphics.pose().popPose();
+            }
             return;
         }
         ShopCatalogPayload.Entry entry = selectedEntry();

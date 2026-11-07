@@ -1,6 +1,7 @@
 package com.github.arrivedbog593.economycore.platform.menu;
 
 import com.github.arrivedbog593.economycore.platform.item.AdminKeyItem;
+import com.github.arrivedbog593.economycore.platform.network.AdminBankStatePayload;
 import com.github.arrivedbog593.economycore.platform.network.BankStatePayload;
 import com.github.arrivedbog593.economycore.platform.network.ExchangeCatalogPayload;
 import com.github.arrivedbog593.economycore.platform.network.ShopCatalogPayload;
@@ -23,8 +24,8 @@ public enum Counter {
 
     EXCHANGE("block.economycore.exchange", "economycore.admin.exchange.title"),
     SHOP("block.economycore.shop", "economycore.admin.shop.title"),
-    /** No block and no settings: a banker or {@code /bank}, and the same screen for staff. */
-    BANK("economycore.my_bank.title", "economycore.my_bank.title");
+    /** A banker, an ATM or {@code /bank}; a staff key at either of the first two opens its settings. */
+    BANK("economycore.my_bank.title", "economycore.admin.bank.title");
 
     private final String titleKey;
     private final String adminTitleKey;
@@ -56,22 +57,21 @@ public enum Counter {
      * customer's screen would read as the key having worked.
      */
     public void administer(ServerPlayer player, ItemStack key, MenuAnchor anchor) {
-        if (this == BANK) {
-            // Nothing to configure: a staff member at the banker is a customer.
-            open(player, anchor);
-            return;
-        }
         if (!AdminKeyItem.mayAdminister(player, key)) {
             player.displayClientMessage(
                     Component.translatable("economycore.admin.key_not_yours"), true);
             return;
         }
-        sendCatalog(player);
+        if (this == BANK) {
+            PacketDistributor.sendToPlayer(player, AdminBankStatePayload.current());
+        } else {
+            sendCatalog(player);
+        }
         player.openMenu(new SimpleMenuProvider(
                         (containerId, inventory, who) -> switch (this) {
                             case EXCHANGE -> new AdminExchangeMenu(containerId, inventory, anchor);
                             case SHOP -> new AdminShopMenu(containerId, inventory, anchor);
-                            case BANK -> throw new IllegalStateException("The bank has no settings");
+                            case BANK -> new AdminBankMenu(containerId, inventory, anchor);
                         },
                         Component.translatable(adminTitleKey)),
                 buffer -> {

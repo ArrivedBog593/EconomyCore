@@ -15,7 +15,8 @@ import java.util.UUID;
  * the way SkyBlock's cookie opens the auction house and the bazaar from
  * anywhere: ask {@link #isActive} where the privilege is granted.
  * <p>
- * Reading only. A pass is given by using the item, and by nothing else.
+ * Reading only. A pass is given by using the item, or by the staff with
+ * {@code /economycore pass}.
  */
 public final class MerchantPass {
 

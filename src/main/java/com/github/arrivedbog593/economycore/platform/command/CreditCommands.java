@@ -3,25 +3,34 @@ package com.github.arrivedbog593.economycore.platform.command;
 import com.github.arrivedbog593.economycore.api.CreditFormat;
 import com.github.arrivedbog593.economycore.api.Pocket;
 import com.github.arrivedbog593.economycore.api.TransactionType;
+import com.github.arrivedbog593.economycore.engine.BankLevels;
 import com.github.arrivedbog593.economycore.engine.CreditAccount;
 import com.github.arrivedbog593.economycore.platform.Commitments;
 import com.github.arrivedbog593.economycore.platform.CreditStorage;
 import com.github.arrivedbog593.economycore.platform.EconomyEvents;
 import com.github.arrivedbog593.economycore.platform.PersonalBank;
+import com.github.arrivedbog593.economycore.platform.SavingsLevels;
+import com.github.arrivedbog593.economycore.platform.menu.BankMenu;
 import com.github.arrivedbog593.economycore.platform.menu.Counter;
+import com.github.arrivedbog593.economycore.platform.network.BankStatePayload;
 import com.mojang.authlib.GameProfile;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.LongArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.arguments.GameProfileArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 /**
  * {@code /credits}: a balance, a payment between players, putting credits
@@ -29,7 +38,7 @@ import java.util.Collection;
  * not their own.
  * <p>
  * Everything here but the savings commands works on the purse, the pocket
- * players spend from.
+ * players spend from, unless staff name the bank.
  * <p>
  * Items are not traded here. {@code /credits convert} and
  * {@code /credits redeem} came first, to try the economy out before there
@@ -93,37 +102,105 @@ public final class CreditCommands {
                                 LongArgumentType.getLong(context, "amount")))));
 
         // Moving money that is not your own: operators and staff administrators.
-        root.then(Commands.literal("give")
-                .requires(StaffAccess::adminOrOperator)
-                .then(Commands.argument("target", EntityArgument.player())
-                        .then(Commands.argument("amount",
-                                        LongArgumentType.longArg(1, CreditAccount.MAX_BALANCE))
-                                .executes(context -> give(
-                                        context.getSource(),
-                                        EntityArgument.getPlayer(context, "target"),
-                                        LongArgumentType.getLong(context, "amount"))))));
+        // The purse unless the bank is named, so the commands from before
+        // there was a bank still do what they did.
+        root.then(staffMove("give", 1, CreditCommands::give));
+        root.then(staffMove("take", 1, CreditCommands::take));
+        root.then(staffMove("set", 0, CreditCommands::set));
 
-        root.then(Commands.literal("take")
+        // A bank's level, to look at or to set outright without charging for it.
+        root.then(Commands.literal("banklevel")
                 .requires(StaffAccess::adminOrOperator)
                 .then(Commands.argument("target", EntityArgument.player())
-                        .then(Commands.argument("amount",
-                                        LongArgumentType.longArg(1, CreditAccount.MAX_BALANCE))
-                                .executes(context -> take(
-                                        context.getSource(),
+                        .executes(context -> showBankLevel(context.getSource(),
+                                EntityArgument.getPlayer(context, "target")))
+                        .then(Commands.argument("level", StringArgumentType.word())
+                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(
+                                        SavingsLevels.levels().map(levels -> levels.levels().stream()
+                                                .map(BankLevels.Level::name).toList()).orElse(List.of()), builder))
+                                .executes(context -> setBankLevel(context.getSource(),
                                         EntityArgument.getPlayer(context, "target"),
-                                        LongArgumentType.getLong(context, "amount"))))));
-
-        root.then(Commands.literal("set")
-                .requires(StaffAccess::adminOrOperator)
-                .then(Commands.argument("target", EntityArgument.player())
-                        .then(Commands.argument("amount",
-                                        LongArgumentType.longArg(0, CreditAccount.MAX_BALANCE))
-                                .executes(context -> set(
-                                        context.getSource(),
-                                        EntityArgument.getPlayer(context, "target"),
-                                        LongArgumentType.getLong(context, "amount"))))));
+                                        StringArgumentType.getString(context, "level"))))));
 
         dispatcher.register(root);
+    }
+
+    /** What a staff movement does once it knows whom, how much and which pocket. */
+    @FunctionalInterface
+    private interface StaffMove {
+        int run(CommandSourceStack source, ServerPlayer target, long amount, Pocket pocket);
+    }
+
+    /** {@code /credits <name> <target> <amount> [purse|bank]}. */
+    private static LiteralArgumentBuilder<CommandSourceStack> staffMove(String name, long least, StaffMove move) {
+        return Commands.literal(name)
+                .requires(StaffAccess::adminOrOperator)
+                .then(Commands.argument("target", EntityArgument.player())
+                        .then(Commands.argument("amount", LongArgumentType.longArg(least, CreditAccount.MAX_BALANCE))
+                                .executes(context -> move.run(context.getSource(),
+                                        EntityArgument.getPlayer(context, "target"),
+                                        LongArgumentType.getLong(context, "amount"), Pocket.PURSE))
+                                .then(Commands.literal("purse")
+                                        .executes(context -> move.run(context.getSource(),
+                                                EntityArgument.getPlayer(context, "target"),
+                                                LongArgumentType.getLong(context, "amount"), Pocket.PURSE)))
+                                .then(Commands.literal("bank")
+                                        .executes(context -> move.run(context.getSource(),
+                                                EntityArgument.getPlayer(context, "target"),
+                                                LongArgumentType.getLong(context, "amount"), Pocket.SAVINGS)))));
+    }
+
+    /**
+     * The key for a staff message, with {@code _bank} on the end when it is
+     * about the bank, so each language can word "their bank" its own way.
+     */
+    private static String key(String name, Pocket pocket) {
+        return "economycore.command.credits." + name + (pocket == Pocket.SAVINGS ? "_bank" : "");
+    }
+
+    /**
+     * What staff may not take from this pocket: in the purse, what is
+     * promised to a table or a bid; the bank has nothing promised.
+     */
+    private static long promisedFrom(UUID player, Pocket pocket, long balance) {
+        return pocket == Pocket.PURSE ? balance - Commitments.players().spendable(player, balance) : 0;
+    }
+
+    private static int showBankLevel(CommandSourceStack source, ServerPlayer target) {
+        CreditStorage storage = CreditStorage.get(source.getServer());
+        Optional<BankLevels.Level> level = SavingsLevels.levelOf(storage, target.getUUID());
+        if (level.isEmpty()) {
+            source.sendFailure(Component.translatable("economycore.my_bank.upgrade.none"));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.translatable("economycore.command.credits.bank_level",
+                target.getDisplayName(), SavingsLevels.nameOf(level.get().name()),
+                CreditFormat.of(level.get().cap())), false);
+        return 1;
+    }
+
+    /** Puts a player's bank on a level, up or down, charging nothing and taking nothing out. */
+    private static int setBankLevel(CommandSourceStack source, ServerPlayer target, String name) {
+        Optional<BankLevels> levels = SavingsLevels.levels();
+        if (levels.isEmpty()) {
+            source.sendFailure(Component.translatable("economycore.my_bank.upgrade.none"));
+            return 0;
+        }
+        int index = levels.get().indexOf(name);
+        if (index < 0) {
+            source.sendFailure(Component.translatable("economycore.command.credits.bank_level_unknown", name));
+            return 0;
+        }
+        CreditStorage.get(source.getServer()).setBankLevel(target.getUUID(), levels.get().reached(index));
+        StaffAccess.announce(source,
+                Component.translatable("economycore.command.credits.bank_level_set",
+                        target.getDisplayName(), SavingsLevels.nameOf(name)),
+                Component.translatable("economycore.command.credits.bank_level_set_by", source.getDisplayName(),
+                        target.getDisplayName(), SavingsLevels.nameOf(name)));
+        if (target.containerMenu instanceof BankMenu) {
+            BankStatePayload.send(target);
+        }
+        return 1;
     }
 
     private static int showBalance(CommandSourceStack source) throws CommandSyntaxException {
@@ -232,19 +309,19 @@ public final class CreditCommands {
         return 1;
     }
 
-    private static int give(CommandSourceStack source, ServerPlayer target, long amount) {
+    private static int give(CommandSourceStack source, ServerPlayer target, long amount, Pocket pocket) {
         CreditStorage storage = CreditStorage.get(source.getServer());
-        if (!storage.deposit(target.getUUID(), amount)) {
+        if (!storage.deposit(target.getUUID(), pocket, amount)) {
             source.sendFailure(Component.translatable("economycore.exchange.cap_reached"));
             return 0;
         }
-        long balance = storage.balanceOf(target.getUUID());
+        long balance = storage.balanceOf(target.getUUID(), pocket);
         EconomyEvents.record(storage, TransactionType.ADMIN_GIVE,
-                target.getUUID(), amount, balance, "by " + source.getTextName());
+                target.getUUID(), pocket, amount, balance, "by " + source.getTextName());
         StaffAccess.announce(source,
-                Component.translatable("economycore.command.credits.given",
+                Component.translatable(key("given", pocket),
                         CreditFormat.of(amount), target.getDisplayName()),
-                Component.translatable("economycore.command.credits.given_by", source.getDisplayName(),
+                Component.translatable(key("given_by", pocket), source.getDisplayName(),
                         CreditFormat.of(amount), target.getDisplayName(), CreditFormat.of(balance)));
         return 1;
     }
@@ -258,31 +335,32 @@ public final class CreditCommands {
      * player unable to pay: the round would then be handed back as if it had
      * never happened.
      */
-    private static int take(CommandSourceStack source, ServerPlayer target, long amount) {
+    private static int take(CommandSourceStack source, ServerPlayer target, long amount, Pocket pocket) {
         CreditStorage storage = CreditStorage.get(source.getServer());
-        long balance = storage.balanceOf(target.getUUID());
-        long takeable = Commitments.players().spendable(target.getUUID(), balance);
+        long balance = storage.balanceOf(target.getUUID(), pocket);
+        long promised = promisedFrom(target.getUUID(), pocket, balance);
+        long takeable = balance - promised;
         if (amount > takeable) {
-            source.sendFailure(takeable < balance
+            source.sendFailure(promised > 0
                     ? Component.translatable("economycore.command.credits.take_promised",
-                            target.getDisplayName(), CreditFormat.of(balance - takeable),
+                            target.getDisplayName(), CreditFormat.of(promised),
                             CreditFormat.of(takeable))
-                    : Component.translatable("economycore.command.credits.take_short",
+                    : Component.translatable(key("take_short", pocket),
                             target.getDisplayName(), CreditFormat.of(balance)));
             return 0;
         }
-        if (!storage.withdraw(target.getUUID(), amount)) {
-            source.sendFailure(Component.translatable("economycore.command.credits.take_short",
+        if (!storage.withdraw(target.getUUID(), pocket, amount)) {
+            source.sendFailure(Component.translatable(key("take_short", pocket),
                     target.getDisplayName(), CreditFormat.of(balance)));
             return 0;
         }
-        long after = storage.balanceOf(target.getUUID());
+        long after = storage.balanceOf(target.getUUID(), pocket);
         EconomyEvents.record(storage, TransactionType.ADMIN_TAKE,
-                target.getUUID(), -amount, after, "by " + source.getTextName());
+                target.getUUID(), pocket, -amount, after, "by " + source.getTextName());
         StaffAccess.announce(source,
-                Component.translatable("economycore.command.credits.taken",
+                Component.translatable(key("taken", pocket),
                         CreditFormat.of(amount), target.getDisplayName(), CreditFormat.of(after)),
-                Component.translatable("economycore.command.credits.taken_by", source.getDisplayName(),
+                Component.translatable(key("taken_by", pocket), source.getDisplayName(),
                         CreditFormat.of(amount), target.getDisplayName(), CreditFormat.of(after)));
         return 1;
     }
@@ -295,10 +373,10 @@ public final class CreditCommands {
      * way it moved, so the audit trail still adds up. Never below what the
      * player has promised, for the same reason {@link #take} stops there.
      */
-    private static int set(CommandSourceStack source, ServerPlayer target, long amount) {
+    private static int set(CommandSourceStack source, ServerPlayer target, long amount, Pocket pocket) {
         CreditStorage storage = CreditStorage.get(source.getServer());
-        long before = storage.balanceOf(target.getUUID());
-        long promised = before - Commitments.players().spendable(target.getUUID(), before);
+        long before = storage.balanceOf(target.getUUID(), pocket);
+        long promised = promisedFrom(target.getUUID(), pocket, before);
         if (amount < before && amount < promised) {
             source.sendFailure(Component.translatable("economycore.command.credits.set_promised",
                     target.getDisplayName(), CreditFormat.of(promised)));
@@ -307,20 +385,20 @@ public final class CreditCommands {
         long delta = amount - before;
         if (delta != 0) {
             boolean done = delta > 0
-                    ? storage.deposit(target.getUUID(), delta)
-                    : storage.withdraw(target.getUUID(), -delta);
+                    ? storage.deposit(target.getUUID(), pocket, delta)
+                    : storage.withdraw(target.getUUID(), pocket, -delta);
             if (!done) {
                 source.sendFailure(Component.translatable("economycore.exchange.cap_reached"));
                 return 0;
             }
             EconomyEvents.record(storage,
                     delta > 0 ? TransactionType.ADMIN_GIVE : TransactionType.ADMIN_TAKE,
-                    target.getUUID(), delta, amount, "set by " + source.getTextName());
+                    target.getUUID(), pocket, delta, amount, "set by " + source.getTextName());
         }
         StaffAccess.announce(source,
-                Component.translatable("economycore.command.credits.set",
+                Component.translatable(key("set", pocket),
                         target.getDisplayName(), CreditFormat.of(amount)),
-                Component.translatable("economycore.command.credits.set_by", source.getDisplayName(),
+                Component.translatable(key("set_by", pocket), source.getDisplayName(),
                         target.getDisplayName(), CreditFormat.of(amount)));
         return 1;
     }

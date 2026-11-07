@@ -4,10 +4,14 @@ import com.github.arrivedbog593.economycore.api.CreditFormat;
 import com.github.arrivedbog593.economycore.engine.CreditAccount;
 import com.github.arrivedbog593.economycore.engine.CreditValueTable;
 import com.github.arrivedbog593.economycore.engine.EconomyIssue;
+import com.github.arrivedbog593.economycore.platform.BankSettings;
 import com.github.arrivedbog593.economycore.platform.DeathLoss;
+import com.github.arrivedbog593.economycore.platform.EconomyConfig;
 import com.github.arrivedbog593.economycore.platform.EconomyData;
 import com.github.arrivedbog593.economycore.platform.EconomyEvents;
 import com.github.arrivedbog593.economycore.platform.ItemIds;
+import com.github.arrivedbog593.economycore.platform.PassWatch;
+import com.github.arrivedbog593.economycore.platform.SavingsInterest;
 import com.github.arrivedbog593.economycore.platform.ShopEntry;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
@@ -20,6 +24,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
@@ -27,6 +32,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -136,6 +142,12 @@ public final class EconomyCommands {
                                                 LongArgumentType.getLong(context, "amount"))))))
                 .then(Commands.literal("restock")
                         .then(shopEntryArgument()
+                                // Fills it up now and starts its clock over, so a
+                                // restock need not be waited for to be seen.
+                                .then(Commands.literal("now")
+                                        .executes(context -> updateShop(context.getSource(), entry(context),
+                                                entry -> entry.withStock(entry.capacity(), System.currentTimeMillis()),
+                                                "economycore.command.shop.restocked")))
                                 .then(Commands.argument("hours", IntegerArgumentType.integer(0, 24 * 365))
                                         .executes(context -> updateShop(context.getSource(), entry(context),
                                                 entry -> entry.withRestock(IntegerArgumentType.getInteger(context, "hours"),
@@ -181,7 +193,91 @@ public final class EconomyCommands {
                                 .executes(context -> deathLossCombat(context.getSource(),
                                         BoolArgumentType.getBool(context, "only"))))));
 
+        root.then(Commands.literal("interest")
+                .requires(source -> source.hasPermission(2))
+                .then(Commands.literal("pay")
+                        .executes(context -> payInterest(context.getSource()))));
+
+        // What the bank's settings window changed is this world's alone; this
+        // drops it, and the world follows the server config again.
+        root.then(Commands.literal("banksettings")
+                .requires(source -> source.hasPermission(2))
+                .then(Commands.literal("useconfig")
+                        .executes(context -> {
+                            BankSettings.useConfig(context.getSource().getServer());
+                            context.getSource().sendSuccess(() -> Component.translatable(
+                                    "economycore.command.banksettings.useconfig"), true);
+                            return 1;
+                        })));
+
+        // As /effect gives a potion's: a pass without the item, for as many
+        // seconds as asked, or ended at once — to try out what it allows, or
+        // that it runs out, without waiting days.
+        root.then(Commands.literal("pass")
+                .requires(source -> source.hasPermission(2))
+                .then(Commands.literal("give")
+                        .then(Commands.argument("targets", EntityArgument.players())
+                                .executes(context -> givePass(context.getSource(),
+                                        EntityArgument.getPlayers(context, "targets"),
+                                        EconomyConfig.PASS_HOURS.get() * 3_600L))
+                                .then(Commands.argument("seconds", IntegerArgumentType.integer(1, 24 * 365 * 3_600))
+                                        .executes(context -> givePass(context.getSource(),
+                                                EntityArgument.getPlayers(context, "targets"),
+                                                IntegerArgumentType.getInteger(context, "seconds"))))))
+                .then(Commands.literal("clear")
+                        .then(Commands.argument("targets", EntityArgument.players())
+                                .executes(context -> clearPass(context.getSource(),
+                                        EntityArgument.getPlayers(context, "targets"))))));
+
         dispatcher.register(root);
+    }
+
+    /** Adds to each player's pass as using one would: from now, or from when it would have run out. */
+    private static int givePass(CommandSourceStack source, Collection<ServerPlayer> targets, long seconds) {
+        EconomyData data = EconomyData.get(source.getServer());
+        long now = System.currentTimeMillis();
+        for (ServerPlayer player : targets) {
+            long until = data.extendPass(player.getUUID(), seconds * 1_000L, now);
+            player.sendSystemMessage(Component.translatable("economycore.pass.activated",
+                    PassWatch.describe(until - now)).withStyle(ChatFormatting.GOLD));
+            PassWatch.changed(player);
+        }
+        source.sendSuccess(() -> Component.translatable("economycore.command.pass.given",
+                PassWatch.describe(seconds * 1_000L), targets.size()), true);
+        return targets.size();
+    }
+
+    /** Ends each player's pass now, as if it had run out. */
+    private static int clearPass(CommandSourceStack source, Collection<ServerPlayer> targets) {
+        EconomyData data = EconomyData.get(source.getServer());
+        long now = System.currentTimeMillis();
+        int ended = 0;
+        for (ServerPlayer player : targets) {
+            if (data.clearPass(player.getUUID(), now)) {
+                ended++;
+                player.sendSystemMessage(Component.translatable("economycore.pass.expired")
+                        .withStyle(ChatFormatting.GOLD));
+                PassWatch.changed(player);
+            }
+        }
+        int count = ended;
+        source.sendSuccess(() -> Component.translatable("economycore.command.pass.cleared", count), true);
+        return count;
+    }
+
+    /**
+     * Pays interest now instead of when it falls due, and starts the period
+     * over: to try it out, or to make up for a payment a server missed.
+     */
+    private static int payInterest(CommandSourceStack source) {
+        if (!SavingsInterest.isOn()) {
+            source.sendFailure(Component.translatable("economycore.interest.off"));
+            return 0;
+        }
+        SavingsInterest.Payment payment = SavingsInterest.payNow(source.getServer());
+        source.sendSuccess(() -> Component.translatable("economycore.interest.paid_now",
+                CreditFormat.of(payment.total()), payment.savers()), true);
+        return payment.savers();
     }
 
     /**
@@ -227,6 +323,7 @@ public final class EconomyCommands {
      */
     private static int deathLoss(CommandSourceStack source, int percent) {
         EconomyData.get(source.getServer()).setDeathLossPercent(percent);
+        BankSettings.refresh(source.getServer());
         source.sendSuccess(() -> percent == 0
                 ? Component.translatable("economycore.deathloss.off")
                 : Component.translatable("economycore.deathloss.set", percent), true);
@@ -236,6 +333,7 @@ public final class EconomyCommands {
     /** Whether only deaths at the hands of a mob or a player cost credits, as in SkyBlock. */
     private static int deathLossCombat(CommandSourceStack source, boolean only) {
         EconomyData.get(source.getServer()).setDeathLossCombatOnly(only);
+        BankSettings.refresh(source.getServer());
         source.sendSuccess(() -> Component.translatable(only
                 ? "economycore.deathloss.combat_on" : "economycore.deathloss.combat_off"), true);
         return 1;

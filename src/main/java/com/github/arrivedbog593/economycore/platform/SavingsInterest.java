@@ -77,13 +77,13 @@ public final class SavingsInterest {
         pay(server);
     }
 
-    /** Whether the config switches interest on. */
+    /** Whether this world pays interest; see {@link BankSettings}. */
     public static boolean isOn() {
-        return EconomyConfig.SPEC.isLoaded() && EconomyConfig.INTEREST_ENABLED.get();
+        return BankSettings.interestOn();
     }
 
     public static long periodMillis() {
-        return EconomyConfig.INTEREST_PERIOD_HOURS.get() * 3_600_000L;
+        return BankSettings.periodHours() * 3_600_000L;
     }
 
     /** The tranches the config sets, or empty if it cannot be read, in which case nothing is paid. */
@@ -100,22 +100,46 @@ public final class SavingsInterest {
         return isOn() && due > 0 ? Math.max(0, due - System.currentTimeMillis()) : -1;
     }
 
-    private static void pay(MinecraftServer server) {
-        Optional<InterestTranches> read = tranches();
-        if (read.isEmpty()) {
-            LOGGER.warn("[Economy] Interest fell due but interest.tranches in the server config cannot "
-                    + "be read; nothing was paid. Each line must look like \"10000000:2\".");
-            return;
+    /**
+     * What one payment came to.
+     *
+     * @param savers how many were paid
+     * @param total  how much, all together
+     */
+    public record Payment(int savers, long total) {
+    }
+
+    /**
+     * Pays now, for an operator who wants to see it work without waiting the
+     * period out, and starts the clock again from here, so the next payment
+     * is a whole period away rather than doubling up.
+     */
+    public static Payment payNow(MinecraftServer server) {
+        EconomyData.get(server).setNextInterestAt(System.currentTimeMillis() + periodMillis());
+        return pay(server);
+    }
+
+    private static Payment pay(MinecraftServer server) {
+        if (tranches().isEmpty()) {
+            // Levels may set their own, but a typo here should not go unsaid.
+            LOGGER.warn("[Economy] interest.tranches in the server config cannot be read; savers on a "
+                    + "bank level with no tranches of its own were paid nothing. Each line must look like "
+                    + "\"10000000:2\".");
         }
-        InterestTranches tranches = read.get();
         CreditStorage storage = CreditStorage.get(server);
         long now = System.currentTimeMillis();
         int paid = 0;
         long total = 0;
         for (UUID saver : storage.savers()) {
+            Optional<InterestTranches> tranches = SavingsLevels.tranchesOf(storage, saver);
+            if (tranches.isEmpty()) {
+                continue;
+            }
             long balance = storage.balanceOf(saver, Pocket.SAVINGS);
-            // Whatever would breach the cap is not paid, rather than the whole payment refused.
-            long earned = Math.min(tranches.interestOn(balance), CreditAccount.MAX_BALANCE - balance);
+            // Never past what the account's level holds; whatever would go
+            // over is not paid, rather than the whole payment refused.
+            long earned = Math.min(tranches.get().interestOn(balance),
+                    Math.min(SavingsLevels.capOf(storage, saver), CreditAccount.MAX_BALANCE) - balance);
             if (earned <= 0 || !storage.deposit(saver, Pocket.SAVINGS, earned)) {
                 continue;
             }
@@ -134,5 +158,6 @@ public final class SavingsInterest {
             total += earned;
         }
         LOGGER.info("[Economy] Paid {} credits of interest to {} saver(s).", total, paid);
+        return new Payment(paid, total);
     }
 }

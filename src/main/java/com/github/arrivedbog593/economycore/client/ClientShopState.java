@@ -15,14 +15,23 @@ public final class ClientShopState {
 
     private static List<ShopCatalogPayload.Entry> entries = List.of();
 
+    /** When the catalog arrived, so a restock counts down without the server. */
+    private static long receivedAt;
+
     private ClientShopState() {
     }
 
     public static void accept(ShopCatalogPayload payload) {
         entries = payload.entries();
+        receivedAt = System.currentTimeMillis();
     }
 
     public static List<ShopCatalogPayload.Entry> entries() {
         return entries;
+    }
+
+    /** How long until this entry fills back up, counted down from when the catalog came. */
+    public static long restockLeft(ShopCatalogPayload.Entry entry) {
+        return Math.max(0, entry.restockIn() - (System.currentTimeMillis() - receivedAt));
     }
 }

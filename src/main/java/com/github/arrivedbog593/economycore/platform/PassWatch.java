@@ -28,8 +28,12 @@ import java.util.UUID;
 @EventBusSubscriber(modid = EconomyCore.MOD_ID)
 public final class PassWatch {
 
-    /** Every few seconds: a pass lasts days, and nobody needs it to end on the tick. */
-    private static final int CHECK_EVERY_TICKS = 100;
+    /**
+     * Every second: a pass lasts days, but one given for seconds should be
+     * seen to end when its countdown does, and a look at each player online
+     * costs next to nothing.
+     */
+    private static final int CHECK_EVERY_TICKS = 20;
 
     /** What each online player's pass was last seen as. */
     private static final Map<UUID, Boolean> LAST_SEEN = new HashMap<>();
@@ -77,17 +81,25 @@ public final class PassWatch {
         }
     }
 
-    /** A span as a player reads it on a pass: "3 d 4 h", "5 h", "12 min". */
+    /**
+     * A span as a player reads it, on a pass or a restock, in its two largest
+     * units: "3 d 4 h", "5 h 20 min", "12 min 5 s", "40 s". Rounded up to the
+     * second, so it never reads zero while something is left.
+     */
     public static Component describe(long millis) {
-        long minutes = Math.max(1, (millis + 59_999) / 60_000);
+        long seconds = Math.max(1, (millis + 999) / 1_000);
+        long minutes = seconds / 60;
         long hours = minutes / 60;
         long days = hours / 24;
         if (days > 0) {
             return Component.translatable("economycore.pass.days_hours", days, hours % 24);
         }
         if (hours > 0) {
-            return Component.translatable("economycore.pass.hours", hours);
+            return Component.translatable("economycore.pass.hours_minutes", hours, minutes % 60);
         }
-        return Component.translatable("economycore.pass.minutes", minutes);
+        if (minutes > 0) {
+            return Component.translatable("economycore.pass.minutes_seconds", minutes, seconds % 60);
+        }
+        return Component.translatable("economycore.pass.seconds", seconds);
     }
 }

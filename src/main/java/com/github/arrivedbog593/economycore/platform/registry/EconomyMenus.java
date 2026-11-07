@@ -1,6 +1,7 @@
 package com.github.arrivedbog593.economycore.platform.registry;
 
 import com.github.arrivedbog593.economycore.EconomyCore;
+import com.github.arrivedbog593.economycore.platform.menu.AdminBankMenu;
 import com.github.arrivedbog593.economycore.platform.menu.AdminExchangeMenu;
 import com.github.arrivedbog593.economycore.platform.menu.AdminShopMenu;
 import com.github.arrivedbog593.economycore.platform.menu.BankMenu;
@@ -32,6 +33,9 @@ public final class EconomyMenus {
 
     public static final DeferredHolder<MenuType<?>, MenuType<AdminExchangeMenu>> ADMIN_EXCHANGE =
             MENUS.register("admin_exchange", () -> IMenuTypeExtension.create(AdminExchangeMenu::new));
+
+    public static final DeferredHolder<MenuType<?>, MenuType<AdminBankMenu>> ADMIN_BANK =
+            MENUS.register("admin_bank", () -> IMenuTypeExtension.create(AdminBankMenu::new));
 
     private EconomyMenus() {
     }

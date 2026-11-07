@@ -64,6 +64,17 @@ The bank can pay **interest**, off by default: every so many real hours, to ever
 savings, by tranches, as SkyBlock does (2% on the first 10,000,000 and 1% up to 15,000,000
 unless the config says otherwise). Every credit it pays is new money.
 
+Bank accounts have **levels**, SkyBlock's seven by default: Starter holds 50,000,000, and each
+level after holds more and pays interest on more of it, up to Palatial's 60,000,000,000. The
+next level is bought at the banker's Upgrades tab, with credits from the bank and gold blocks
+from the inventory (SkyBlock's costs, with a gold block for each enchanted one). Deposits stop
+at the account's limit, and so does interest. `bankLevels.levels` sets the levels, their
+costs and their interest; credits only, items only, or both. Empty, banks have no limit.
+Staff change all of it from inside the game: a staff key on a banker or an ATM opens the
+bank's settings, with interest, what dying costs, and the levels, each with its name, limit,
+cost and interest, and the items it costs put in a slot as the shop's are. What it changes is
+written to the server config, so the file and the window always agree.
+
 A **merchant's pass**, like SkyBlock's booster cookie, is used up for 96 real hours of
 privileges (counting while the player is away; using another adds to what is left): `/bank`,
 `/exchange` and `/shop` from anywhere even when they are switched off, and keeping the purse on
@@ -85,7 +96,10 @@ many times each player may buy it a day.
 | `/credits deposit <amount>`      | everyone, unless switched off   | Put credits away in savings; `all` for all     |
 | `/credits withdraw <amount>`     | everyone, unless switched off   | Take credits out of savings; `all` for all     |
 | `/credits balance <player>`      | staff administrators, operators | Anybody's balance, online or not               |
-| `/credits give / take / set`     | staff administrators, operators | Change a balance                               |
+| `/credits give / take / set`     | staff administrators, operators | Change a purse; `bank` on the end for the bank |
+| `/credits banklevel <player>`    | staff administrators, operators | See or set a bank's level, charging nothing    |
+| `/economycore interest pay`       | operators                       | Pay interest now and start the period over     |
+| `/economycore pass give / clear` | operators                       | Give a pass without the item, or end it        |
 | `/economycore help`              | everyone                        | Every command you can use, with a line on each |
 
 `/economycore` also covers prices (`values`), the buyback surcharge (`spread`), what players
@@ -111,6 +125,7 @@ for that world.
 | `interest.enabled`       | `false` | Pay interest on what players keep in the bank                       |
 | `interest.periodHours`   | `31`    | How many real hours apart it is paid                                |
 | `interest.tranches`      | `["10000000:2", "15000000:1"]` | Each slice of a balance and its rate, as `"upTo:percent"`; nothing above the last |
+| `bankLevels.levels`      | SkyBlock's seven | The levels of a bank account: `"name; cap=...; cost=...; items=minecraft:gold_block*5; tranches=..."` |
 | `pass.durationHours`     | `96`    | How many real hours a merchant's pass lasts                         |
 
 ## The server bank and the server's income

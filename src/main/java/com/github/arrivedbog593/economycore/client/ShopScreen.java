@@ -1,6 +1,7 @@
 package com.github.arrivedbog593.economycore.client;
 
 import com.github.arrivedbog593.economycore.api.CreditFormat;
+import com.github.arrivedbog593.economycore.platform.PassWatch;
 import com.github.arrivedbog593.economycore.platform.ShopEntry;
 import com.github.arrivedbog593.economycore.platform.menu.ShopMenu;
 import com.github.arrivedbog593.economycore.platform.network.ShopCatalogPayload;
@@ -447,18 +448,20 @@ public class ShopScreen extends AbstractContainerScreen<ShopMenu> {
             // The cell now fits "100,000". Seven figures still would not, so
             // the abbreviation stays for those rather than growing the panel
             // again for a number a casino rarely charges.
-            graphics.drawString(font, compact(entry.price()),
-                    x + 21, y + 6, affordable ? 0xFFFFFF : 0xFF6B6B, false);
-            if (!entry.onSale()) {
+            if (entry.onSale()) {
+                graphics.drawString(font, compact(entry.price()),
+                        x + 21, y + 6, affordable ? 0xFFFFFF : 0xFF6B6B, false);
+            } else {
                 // Still shown, so a player knows the shop has it, but dimmed and
-                // labeled: off, sold out, or bought up to their limit today.
-                graphics.fill(x, y, x + CELL_WIDTH - 2, y + CELL_HEIGHT - 2, 0xA0303030);
+                // labeled where the price goes: off, sold out, or bought up to
+                // their limit today. The price is still in the tooltip.
+                graphics.fill(x, y, x + CELL_WIDTH - 2, y + CELL_HEIGHT - 2, 0x60303030);
                 Component why = Component.translatable(unavailableKey(entry));
-                float fit = Math.min(1.0F, (CELL_WIDTH - 6) / (float) font.width(why));
+                float fit = Math.min(1.0F, (CELL_WIDTH - 25) / (float) font.width(why));
                 graphics.pose().pushPose();
-                graphics.pose().translate(x + (CELL_WIDTH - 2) / 2.0F, y + 6, 200);
+                graphics.pose().translate(x + 21, y + 6 + (1.0F - fit) * 4, 0);
                 graphics.pose().scale(fit, fit, 1.0F);
-                graphics.drawString(font, why, -font.width(why) / 2, 0, 0xFFFF8A65, true);
+                graphics.drawString(font, why, 0, 0, 0xFFFF8A65, false);
                 graphics.pose().popPose();
             }
         }
@@ -1353,10 +1356,8 @@ public class ShopScreen extends AbstractContainerScreen<ShopMenu> {
                     .withStyle(ChatFormatting.GRAY));
         }
         if (entry.restockIn() >= 0) {
-            long minutes = Math.max(1, (entry.restockIn() + 59_999) / 60_000);
-            lines.add(Component.translatable(minutes < 60
-                            ? "economycore.shop.restock_minutes" : "economycore.shop.restock_hours",
-                    minutes < 60 ? minutes : (minutes + 59) / 60).withStyle(ChatFormatting.GRAY));
+            lines.add(Component.translatable("economycore.shop.restock_in",
+                    PassWatch.describe(ClientShopState.restockLeft(entry))).withStyle(ChatFormatting.GRAY));
         }
     }
 

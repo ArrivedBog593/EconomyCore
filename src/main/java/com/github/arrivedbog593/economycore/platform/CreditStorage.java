@@ -1,6 +1,7 @@
 package com.github.arrivedbog593.economycore.platform;
 
 import com.github.arrivedbog593.economycore.api.Pocket;
+import com.github.arrivedbog593.economycore.engine.BankLevels;
 import com.github.arrivedbog593.economycore.engine.BankMovement;
 import com.github.arrivedbog593.economycore.engine.CreditAccount;
 import com.mojang.logging.LogUtils;
@@ -71,6 +72,8 @@ public final class CreditStorage extends SavedData {
     private static final String KEY_SAVINGS = "savings";
     private static final String KEY_SEQUENCE = "last_sequence";
     private static final String KEY_RECENT = "recent";
+    private static final String KEY_BANK_LEVEL = "bank_level";
+    private static final String KEY_BANK_LEVEL_CAP = "bank_level_cap";
     private static final String KEY_TIME = "t";
     private static final String KEY_KIND = "k";
     private static final String KEY_AMOUNT = "a";
@@ -83,6 +86,14 @@ public final class CreditStorage extends SavedData {
 
     /** Each player's last few bank movements, newest last, for the banker to show. */
     private final Map<UUID, Deque<BankMovement>> recent = new HashMap<>();
+
+    /**
+     * The level each player's bank account has reached, by name, as their
+     * balances are kept: by their UUID. Absent for a player never upgraded.
+     * Kept with the balances, so a crash that loses an upgrade loses the
+     * credits it cost with it.
+     */
+    private final Map<UUID, BankLevels.Reached> bankLevels = new HashMap<>();
 
     /**
      * Accounts that moved since anyone last asked, so the purse on players'
@@ -123,6 +134,10 @@ public final class CreditStorage extends SavedData {
             if (saved > 0) {
                 storage.savings.put(owner, new CreditAccount(owner, saved));
             }
+            if (entry.contains(KEY_BANK_LEVEL, Tag.TAG_STRING)) {
+                storage.bankLevels.put(owner, new BankLevels.Reached(entry.getString(KEY_BANK_LEVEL),
+                        entry.getLong(KEY_BANK_LEVEL_CAP)));
+            }
             ListTag history = entry.getList(KEY_RECENT, Tag.TAG_COMPOUND);
             for (int j = 0; j < history.size(); j++) {
                 CompoundTag line = history.getCompound(j);
@@ -154,6 +169,7 @@ public final class CreditStorage extends SavedData {
     public @NotNull CompoundTag save(@NotNull CompoundTag tag, HolderLookup.@NotNull Provider registries) {
         Set<UUID> owners = new LinkedHashSet<>(accounts.keySet());
         owners.addAll(savings.keySet());
+        owners.addAll(bankLevels.keySet());
         ListTag list = new ListTag();
         for (UUID owner : owners) {
             CompoundTag entry = new CompoundTag();
@@ -162,6 +178,11 @@ public final class CreditStorage extends SavedData {
             long saved = balanceOf(owner, Pocket.SAVINGS);
             if (saved > 0) {
                 entry.putLong(KEY_SAVINGS, saved);
+            }
+            BankLevels.Reached level = bankLevels.get(owner);
+            if (level != null) {
+                entry.putString(KEY_BANK_LEVEL, level.name());
+                entry.putLong(KEY_BANK_LEVEL_CAP, level.cap());
             }
             Deque<BankMovement> history = recent.get(owner);
             if (history != null && !history.isEmpty()) {
@@ -294,6 +315,34 @@ public final class CreditStorage extends SavedData {
         Set<UUID> drained = Set.copyOf(touched);
         touched.clear();
         return drained;
+    }
+
+    // --- Bank account levels --------------------------------------------------
+
+    /**
+     * The level this player's bank account reached, or null if it never
+     * moved up; {@link BankLevels#placeOf} says where that puts them now.
+     */
+    public BankLevels.Reached bankLevel(UUID playerId) {
+        return bankLevels.get(playerId);
+    }
+
+    public void setBankLevel(UUID playerId, BankLevels.Reached level) {
+        if (level == null) {
+            bankLevels.remove(playerId);
+        } else {
+            bankLevels.put(playerId, level);
+        }
+        setDirty();
+    }
+
+    /**
+     * Moves everybody on a level that was renamed to its new name, so a
+     * rename made from the bank's settings leaves them where they were.
+     */
+    public void renameBankLevel(String from, BankLevels.Reached to) {
+        bankLevels.replaceAll((owner, level) -> level.name().equals(from) ? to : level);
+        setDirty();
     }
 
     // --- Recent bank movements ------------------------------------------------

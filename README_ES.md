@@ -72,6 +72,19 @@ los que tengan algo guardado, por tramos como en SkyBlock (un 2 % por los primer
 10.000.000 y un 1 % hasta 15.000.000, salvo que la configuración diga otra cosa). Cada
 crédito que paga es dinero nuevo.
 
+Las cuentas del banco tienen **niveles**, los siete de SkyBlock por defecto: la Inicial guarda
+50.000.000, y cada nivel siguiente guarda más y paga interés por más, hasta los
+60.000.000.000 de la Palaciega. El siguiente nivel se compra en la pestaña Mejoras del
+banquero, con créditos del banco y bloques de oro del inventario (los costes de SkyBlock, con
+un bloque de oro por cada uno encantado). Los depósitos se paran en el límite de la cuenta, y
+el interés también. `bankLevels.levels` fija los niveles, lo que cuestan y su interés: solo
+créditos, solo objetos, o ambos. Vacío, los bancos no tienen límite.
+El staff cambia todo esto desde dentro del juego: la llave de staff en un banquero o un cajero
+abre los ajustes del banco, con el interés, lo que cuesta morir y los niveles, cada uno con su
+nombre, límite, coste e interés, y los objetos que cuesta puestos en una casilla como en la
+tienda. Lo que cambia se escribe en la configuración del servidor, así que el archivo y la
+ventana siempre coinciden.
+
 Un **pase de mercader**, como la booster cookie de SkyBlock, se gasta a cambio de 96 horas
 reales de privilegios (cuentan aunque el jugador no esté; usar otro suma a lo que queda):
 `/bank`, `/exchange` y `/shop` desde cualquier sitio aunque estén apagados, y no perder el
@@ -93,7 +106,10 @@ cuántas veces al día puede comprarlo cada jugador.
 | `/credits deposit <cantidad>` | todos, salvo que esté apagado | Guarda créditos del monedero en el banco; `all` para todo |
 | `/credits withdraw <cantidad>` | todos, salvo que esté apagado | Saca créditos del banco al monedero; `all` para todo |
 | `/credits balance <jugador>` | administradores del staff, operadores | El saldo de cualquiera, conectado o no |
-| `/credits give / take / set` | administradores del staff, operadores | Cambia un saldo |
+| `/credits give / take / set` | administradores del staff, operadores | Cambia un monedero; `bank` al final para el banco |
+| `/credits banklevel <jugador>` | administradores del staff, operadores | Ve o cambia el nivel de un banco, sin cobrar |
+| `/economycore interest pay` | operadores | Paga el interés ahora y empieza el periodo de nuevo |
+| `/economycore pass give / clear` | operadores | Da un pase sin el objeto, o lo termina |
 | `/economycore help` | todos | Todos los comandos que puedes usar, con una línea sobre cada uno |
 
 `/economycore` también cubre los precios (`values`), el recargo de recompra (`spread`), lo que
@@ -119,6 +135,7 @@ reemplaza para ese mundo.
 | `interest.enabled` | `false` | Paga interés por lo que los jugadores guardan en el banco |
 | `interest.periodHours` | `31` | Cada cuántas horas reales se paga |
 | `interest.tranches` | `["10000000:2", "15000000:1"]` | Cada tramo del saldo y lo que rinde, como `"hasta:porcentaje"`; por encima del último, nada |
+| `bankLevels.levels` | los siete de SkyBlock | Los niveles de una cuenta del banco: `"nombre; cap=...; cost=...; items=minecraft:gold_block*5; tranches=..."` |
 | `pass.durationHours` | `96` | Cuántas horas reales dura un pase de mercader |
 
 ## El banco del servidor y lo que cobra el servidor

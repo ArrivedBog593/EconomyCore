@@ -44,6 +44,9 @@ public final class EconomyConfig {
     /** Each slice of a balance and its rate, as {@code "upTo:percent"}. */
     public static final ModConfigSpec.ConfigValue<List<? extends String>> INTEREST_TRANCHES;
 
+    /** The levels a player's bank climbs, one to a line; empty for a bank with no limit. */
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> BANK_LEVELS;
+
     /** How many real hours one merchant's pass lasts. */
     public static final ModConfigSpec.IntValue PASS_HOURS;
 
@@ -83,6 +86,9 @@ public final class EconomyConfig {
                         "when it is set or raised.")
                 .defineInRange("welcomeBalance", 0L, 0L, CreditAccount.MAX_BALANCE);
         builder.pop();
+        builder.comment("Interest on or off, its hours and the bank levels are each world's defaults: the bank's",
+                "settings window (a staff key on a banker or an ATM) changes them for that world alone, which",
+                "from then on keeps its own. /economycore banksettings useconfig makes it follow this file again.");
         builder.push("interest");
         INTEREST_ENABLED = builder
                 .comment("Pay interest on what players keep in their bank. Off by default: interest is new",
@@ -97,9 +103,40 @@ public final class EconomyConfig {
                 .comment("Each slice of a bank balance and the rate it earns, as \"upTo:percent\". The default",
                         "pays 2% on the first 10,000,000 and 1% on what lies between that and 15,000,000;",
                         "anything above the last slice earns nothing, which caps every payment. Rates may",
-                        "have decimals, such as \"1000000:0.5\". If any line cannot be read, nothing is paid.")
+                        "have decimals, such as \"1000000:0.5\". If any line cannot be read, nothing is paid.",
+                        "Used for bank levels that set no tranches of their own, and with no levels at all.")
                 .defineListAllowEmpty("tranches", List.of("10000000:2", "15000000:1"), () -> "1000:1",
                         line -> line instanceof String);
+        builder.pop();
+        builder.push("bankLevels");
+        BANK_LEVELS = builder
+                .comment("The levels of a player's bank account, as SkyBlock's, one to a line. Each holds",
+                        "more than the last and may pay interest on more of it. Everybody starts at the first;",
+                        "the next is bought at the banker's Upgrades tab, with credits from the bank and items",
+                        "from the inventory.",
+                        "  name; cap=<most it holds>; cost=<credits>; items=<item>*<count>,...; tranches=<as above>",
+                        "Only the name (lowercase) and cap are needed. Leave out cost or items to ask for",
+                        "nothing of that kind; tranches left out use interest.tranches. A cost is never more than",
+                        "the level before holds. Rename a level and players on it drop to the one now in its place.",
+                        "Leave the list empty for a bank with no limit. If any line cannot be read, the bank",
+                        "has no limit and the log says why.")
+                .defineListAllowEmpty("levels", List.of(
+                        "starter; cap=50000000; tranches=10000000:2,15000000:1",
+                        "gold; cap=100000000; cost=5000000; items=minecraft:gold_block*1;"
+                                + " tranches=10000000:2,20000000:1",
+                        "deluxe; cap=250000000; cost=10000000; items=minecraft:gold_block*5;"
+                                + " tranches=10000000:2,20000000:1,30000000:0.5",
+                        "super_deluxe; cap=500000000; cost=25000000; items=minecraft:gold_block*20;"
+                                + " tranches=10000000:2,20000000:1,30000000:0.5,50000000:0.2",
+                        "premier; cap=1000000000; cost=50000000; items=minecraft:gold_block*50;"
+                                + " tranches=10000000:2,20000000:1,30000000:0.5,50000000:0.2,160000000:0.1",
+                        "luxurious; cap=6000000000; cost=100000000; items=minecraft:gold_block*100;"
+                                + " tranches=10000000:2,20000000:1,30000000:0.5,50000000:0.2,160000000:0.1,"
+                                + "5160000000:0.01",
+                        "palatial; cap=60000000000; cost=200000000; items=minecraft:gold_block*200;"
+                                + " tranches=10000000:2,20000000:1,30000000:0.5,50000000:0.2,160000000:0.1,"
+                                + "5160000000:0.01,55160000000:0.001"),
+                        () -> "starter; cap=1000000", line -> line instanceof String);
         builder.pop();
         builder.push("pass");
         PASS_HOURS = builder

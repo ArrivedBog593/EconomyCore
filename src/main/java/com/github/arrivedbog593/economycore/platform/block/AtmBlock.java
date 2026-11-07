@@ -1,13 +1,17 @@
 package com.github.arrivedbog593.economycore.platform.block;
 
+import com.github.arrivedbog593.economycore.platform.item.AdminKeyItem;
 import com.github.arrivedbog593.economycore.platform.menu.Counter;
 import com.github.arrivedbog593.economycore.platform.menu.MenuAnchor;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
@@ -33,7 +37,7 @@ import org.jetbrains.annotations.NotNull;
  * <p>
  * No block entity: unlike the exchange and the shop it holds nothing and
  * remembers nothing, and the window it opens keeps its own state. A staff key
- * does nothing different here, as the bank has no settings.
+ * opens the bank's settings, as it opens the shop's at a shop.
  */
 public class AtmBlock extends Block {
 
@@ -88,5 +92,25 @@ public class AtmBlock extends Block {
         }
         Counter.BANK.open(serverPlayer, MenuAnchor.block(level, pos, this));
         return InteractionResult.CONSUME;
+    }
+
+    /** The administration card opens the bank's settings instead, through {@link Counter#administer}. */
+    @Override
+    protected @NotNull ItemInteractionResult useItemOn(ItemStack stack, @NotNull BlockState state,
+                                                       @NotNull Level level, @NotNull BlockPos pos,
+                                                       @NotNull Player player,
+                                                       @NotNull InteractionHand hand,
+                                                       @NotNull BlockHitResult hit) {
+        if (!(stack.getItem() instanceof AdminKeyItem)) {
+            return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+        }
+        if (level.isClientSide) {
+            return ItemInteractionResult.SUCCESS;
+        }
+        if (!(player instanceof ServerPlayer serverPlayer)) {
+            return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+        }
+        Counter.BANK.administer(serverPlayer, stack, MenuAnchor.block(level, pos, this));
+        return ItemInteractionResult.CONSUME;
     }
 }

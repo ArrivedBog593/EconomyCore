@@ -38,6 +38,7 @@ public final class EconomyClientSetup {
         event.register(EconomyMenus.BANK.get(), BankScreen::new);
         event.register(EconomyMenus.ADMIN_SHOP.get(), AdminShopScreen::new);
         event.register(EconomyMenus.ADMIN_EXCHANGE.get(), AdminExchangeScreen::new);
+        event.register(EconomyMenus.ADMIN_BANK.get(), AdminBankScreen::new);
     }
 
     @SubscribeEvent

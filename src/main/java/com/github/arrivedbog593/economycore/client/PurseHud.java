@@ -80,17 +80,15 @@ public final class PurseHud {
      * above the middle of the screen when there is none, where it would be.
      */
     private static int sidebarTop(Minecraft minecraft, int screenHeight) {
-        int entries = 0;
-        if (minecraft.level != null) {
-            Scoreboard scoreboard = minecraft.level.getScoreboard();
-            Objective objective = scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR);
-            if (objective != null) {
-                entries = Math.min(scoreboard.listPlayerScores(objective).size(), SIDEBAR_MAX_LINES);
-            }
-        }
-        if (entries == 0) {
+        Scoreboard scoreboard = minecraft.level == null ? null : minecraft.level.getScoreboard();
+        Objective objective = scoreboard == null ? null : scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR);
+        if (objective == null) {
             return screenHeight / 2;
         }
+        // Counted as vanilla counts them, hidden scores left out. With none
+        // the sidebar is still there, its title alone.
+        int entries = (int) Math.min(scoreboard.listPlayerScores(objective).stream()
+                .filter(score -> !score.isHidden()).count(), SIDEBAR_MAX_LINES);
         // Vanilla's arithmetic: the entries end a third of their height below
         // the middle, and the title takes a line above them.
         int listed = entries * LINE;

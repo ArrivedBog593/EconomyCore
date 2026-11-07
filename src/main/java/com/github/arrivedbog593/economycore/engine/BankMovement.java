@@ -11,7 +11,7 @@ import java.util.Objects;
  *
  * @param time   when, in milliseconds since the epoch
  * @param kind   what happened
- * @param amount how much, always positive
+ * @param amount how much, never negative
  */
 public record BankMovement(long time, Kind kind, long amount) {
 
@@ -19,7 +19,9 @@ public record BankMovement(long time, Kind kind, long amount) {
     public static final int KEPT = 10;
 
     public enum Kind {
-        DEPOSIT, WITHDRAWAL, INTEREST;
+        DEPOSIT, WITHDRAWAL, INTEREST,
+        /** The account moved up a level; the amount is what it cost from the bank. */
+        UPGRADE;
 
         /** By position, for the network and the save; anything unknown is a deposit. */
         public static Kind byOrdinal(int ordinal) {

@@ -16,7 +16,7 @@ import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 @EventBusSubscriber(modid = EconomyCore.MOD_ID)
 public final class EconomyPayloads {
 
-    private static final String VERSION = "2";
+    private static final String VERSION = "3";
 
     private EconomyPayloads() {
     }
@@ -59,6 +59,21 @@ public final class EconomyPayloads {
                 BankActionPayload.TYPE,
                 BankActionPayload.STREAM_CODEC,
                 BankActionPayload::handleOnServer);
+
+        registrar.playToClient(
+                AdminBankStatePayload.TYPE,
+                AdminBankStatePayload.STREAM_CODEC,
+                AdminBankStatePayload::handleOnClient);
+
+        registrar.playToServer(
+                AdminBankActionPayload.TYPE,
+                AdminBankActionPayload.STREAM_CODEC,
+                AdminBankActionPayload::handleOnServer);
+
+        registrar.playToServer(
+                BankUpgradePayload.TYPE,
+                BankUpgradePayload.STREAM_CODEC,
+                BankUpgradePayload::handleOnServer);
 
         registrar.playToServer(
                 ExchangeConvertPayload.TYPE,

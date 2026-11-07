@@ -49,7 +49,7 @@ public final class PersonalBank {
     public static Result depositShare(ServerPlayer player, int percent) {
         CreditStorage storage = CreditStorage.get(player.server);
         long free = Commitments.players().spendable(player.getUUID(), storage.balanceOf(player.getUUID()));
-        return deposit(player, shareOf(free, percent));
+        return deposit(player, shareOf(free, percent), true);
     }
 
     /** Takes a share of savings out into the purse. */
@@ -64,8 +64,20 @@ public final class PersonalBank {
         return share > 0 ? share : 0;
     }
 
-    /** Puts credits from the purse away in savings; {@link #ALL} for every free one. */
+    /**
+     * Puts credits from the purse away in savings; {@link #ALL} for every
+     * free one, or as many as the account's level has room for.
+     */
     public static Result deposit(ServerPlayer player, long requested) {
+        return deposit(player, requested, requested == ALL);
+    }
+
+    /**
+     * @param upToRoom whether to put in what fits when it does not all fit,
+     *                 as "all" and a share do, rather than refuse, as a
+     *                 typed amount does: a player who typed a figure meant it
+     */
+    private static Result deposit(ServerPlayer player, long requested, boolean upToRoom) {
         CreditStorage storage = CreditStorage.get(player.server);
         long balance = storage.balanceOf(player.getUUID());
         long free = Commitments.players().spendable(player.getUUID(), balance);
@@ -77,6 +89,17 @@ public final class PersonalBank {
             return refused(Component.translatable(amount <= balance
                     ? "economycore.command.credits.deposit_committed"
                     : "economycore.command.credits.deposit_short", CreditFormat.of(free)));
+        }
+        long room = SavingsLevels.roomIn(storage, player.getUUID());
+        if (amount > room) {
+            if (room <= 0) {
+                return refused(Component.translatable("economycore.my_bank.full",
+                        CreditFormat.of(SavingsLevels.capOf(storage, player.getUUID()))));
+            }
+            if (!upToRoom) {
+                return refused(Component.translatable("economycore.my_bank.room", CreditFormat.of(room)));
+            }
+            amount = room;
         }
         return move(player, storage, Pocket.PURSE, Pocket.SAVINGS, amount,
                 TransactionType.SAVINGS_DEPOSIT, BankMovement.Kind.DEPOSIT, "economycore.command.credits.deposited");
